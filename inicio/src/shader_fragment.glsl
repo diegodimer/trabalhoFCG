@@ -45,15 +45,15 @@ void main()
     vec4 view_global = normalize(inverse(view) * view_camera);
 
     // Vetor que define o sentido da fonte de luz em relação ao ponto atual.
-    vec4 l = vec4(0.0,2.0,1.0,1.0);
+    vec4 l = normalize(vec4(1.0,1.0f,1.0f,0));
     vec4 l2 = normalize(camera_position-p);
 
     // Vetor que define o sentido da câmera em relação ao ponto atual.
-    vec4 v = normalize(vec4(view_global.x, view_global.y-1, view_global.z, 0));
+    vec4 v = normalize(vec4(view_global.x, view_global.y, view_global.z, 0));
     vec4 v2 = normalize(camera_position - p);
 
     // spotlight
-    float alpha = radians(50.0f); //0.523599;
+    float alpha = radians(30.0f); //0.523599;
     // Vetor que define o sentido da reflexão especular ideal.
     // -l + 2n(n*l)
     vec4 r = -l2 + 2*n*(dot(n,l2)); // PREENCHA AQUI o vetor de reflexão especular ideal
@@ -109,17 +109,20 @@ void main()
     vec3 lambert_diffuse_term;
     vec3 ambient_term;
     vec3 phong_specular_term;
-
-    if(lightsOn == 0)
+    float fatt=1;
+    if(lightsOn == 0) // lanterna ligada (luzes desligadas)
     {
-        if( dot( normalize(p-l), normalize(v)) > cos(alpha))
+        if( dot( normalize(p-l), normalize(v)) > cos(alpha)) // se tá sendo iluminado pela spotlight
         {
+            fatt = pow(dot( normalize(p-l), normalize(v)), 10.12);
             // Termo difuso utilizando a lei dos cossenos de Lambert
             lambert_diffuse_term = Kd * I * max(0, dot(n,l2)); // PREENCHA AQUI o termo difuso de Lambert
             // Termo ambiente
             ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
             // Termo especular utilizando o modelo de iluminação de Phong
             phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
+
+            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
         }
         else
         {
@@ -128,11 +131,12 @@ void main()
             ambient_term = Ka*Iafundo; // PREENCHA AQUI o termo ambiente
             // Termo especular utilizando o modelo de iluminação de Phong
             phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v2), q));
+             color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
         }
         // Cor final do fragmento calculada com uma combinação dos termos difuso,
         // especular, e ambiente. Veja slide 133 do documento "Aula_17_e_18_Modelos_de_Iluminacao.pdf".
     }
-    else
+    else // se a lanterna não tá ligada (tudo claro)
     {
         // Termo difuso utilizando a lei dos cossenos de Lambert
         lambert_diffuse_term = Kd * I * max(0, dot(n,l2)); // PREENCHA AQUI o termo difuso de Lambert
@@ -140,9 +144,11 @@ void main()
         ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
         // Termo especular utilizando o modelo de iluminação de Phong
         phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
-
+         color = lambert_diffuse_term + ambient_term + phong_specular_term;
     }
-    color = lambert_diffuse_term + ambient_term + phong_specular_term;
+
+
+
 
 
 
