@@ -73,7 +73,11 @@ struct ObjModel
     }
 };
 
-
+struct sceneHelper{
+    glm::mat4 model;
+    char name[100];
+    int nameId;
+};
 // Declaração de funções utilizadas para pilha de matrizes de modelagem.
 void PushMatrix(glm::mat4 M);
 void PopMatrix(glm::mat4& M);
@@ -117,6 +121,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+
+/* construtor de cena */
+void buildFirstScene(std::vector<struct sceneHelper>*  sceneVector);
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -198,6 +205,8 @@ bool altPress = false;
 float g_FreeCamX = 0.0f;
 float g_FreeCamy = 1.5f;
 float g_FreeCamz = 4.0f;
+
+
 int main(int argc, char* argv[])
 {
     lightsOn=1;
@@ -285,6 +294,7 @@ int main(int argc, char* argv[])
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
 
+
     if ( argc > 1 )
     {
         ObjModel model(argv[1]);
@@ -308,9 +318,28 @@ int main(int argc, char* argv[])
     glm::mat4 the_model;
     glm::mat4 the_view;
 
+
+    #define SPHERE 0
+    #define BUNNY  1
+    #define PLANE  2
+
+
+    // vector da cena
+    std::vector<struct sceneHelper>  sceneVector;
+
+    int sceneNumber = 1;
+
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
+        // constrói primeira cena (aqui se vir mais cenas fazemos aqui mesmo)
+        // precisa que esse vetor seja reconstruído varias vezes por causa da interação, tipo o movimento do coelho
+        if (sceneNumber == 1  ){
+            // limpa o vetor
+            sceneVector.clear();
+        // constrói o vetor de novo
+            buildFirstScene(&sceneVector);
+        }
         // Aqui executamos as operações de renderização
 
         // Definimos a cor do "fundo" do framebuffer como branco.  Tal cor é
@@ -433,67 +462,13 @@ int main(int argc, char* argv[])
         glUniform4fv(view_vector_uniform, 1, glm::value_ptr(camera_view_vector));
 
 
-#define SPHERE 0
-#define BUNNY  1
-#define PLANE  2
-
-        // Desenhamos o modelo da esfera
-        model = Matrix_Translate(-1.0f,0.0f,0.0f);
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, SPHERE);
-        DrawVirtualObject("sphere");
-
-        // Desenhamos o modelo do coelho
-        model = Matrix_Translate(1.0f,0.0f,0.0f)
-                * Matrix_Rotate_Z(g_AngleZ)
-                * Matrix_Rotate_Y(g_AngleY)
-                * Matrix_Rotate_X(g_AngleX);
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, BUNNY);
-        DrawVirtualObject("bunny");
-
-        // desenho do plano
-        // desenho do plano
-        model = Matrix_Translate(0.0f,-1.0f,0.0f)
-                * Matrix_Scale(5.0f,1.0f,5.0f);
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
-
-        model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
-
-
-        model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
-
-        model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
-
-        model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
-
-        model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*model;
-        model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
-//        model = Matrix_Translate(0.0f,3.0f,-4.0f)
-//              * Matrix_Scale(4.0f,4.0f,1.0f)
-//              * Matrix_Rotate_X(1.5708);
-//        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-//        glUniform1i(object_id_uniform, PLANE);
-//        DrawVirtualObject("plane");
-
-
+        /// desenho da cena
+        for(std::vector<int>::size_type i = 0; i != sceneVector.size(); i++) {
+            model = sceneVector[i].model;
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, sceneVector[i].nameId);
+            DrawVirtualObject(sceneVector[i].name);
+        }
 
 
 
@@ -1579,6 +1554,47 @@ void PrintObjModelInfo(ObjModel* model)
         }
         printf("\n");
     }
+}
+
+void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
+
+    struct sceneHelper Objeto;
+
+    Objeto.model = Matrix_Translate(-1.0f,0.0f,0.0f);
+    strcpy(Objeto.name,"sphere");
+    Objeto.nameId = SPHERE;
+    sceneVector->push_back(Objeto);
+
+
+    Objeto.model = Matrix_Translate(1.0f,0.0f,0.0f)
+                * Matrix_Rotate_Z(g_AngleZ)
+                * Matrix_Rotate_Y(g_AngleY)
+                * Matrix_Rotate_X(g_AngleX);
+    strcpy(Objeto.name,"bunny");
+    Objeto.nameId = BUNNY;
+    sceneVector->push_back(Objeto);
+
+
+    Objeto.model = Matrix_Translate(0.0f,-1.0f,0.0f)
+                * Matrix_Scale(5.0f,1.0f,5.0f);
+    strcpy(Objeto.name, "plane");
+    Objeto.nameId = PLANE;
+    sceneVector->push_back(Objeto);
+
+    Objeto.model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*Objeto.model;
+    sceneVector->push_back(Objeto);
+
+    Objeto.model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*Objeto.model;
+    sceneVector->push_back(Objeto);
+
+    Objeto.model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*Objeto.model;
+    sceneVector->push_back(Objeto);
+
+    Objeto.model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*Objeto.model;
+    sceneVector->push_back(Objeto);
+    Objeto.model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*Objeto.model;
+    Objeto.model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*Objeto.model;
+    sceneVector->push_back(Objeto);
 }
 
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null

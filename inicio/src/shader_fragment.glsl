@@ -45,18 +45,24 @@ void main()
     vec4 view_global = normalize(inverse(view) * view_camera);
 
     // Vetor que define o sentido da fonte de luz em relação ao ponto atual.
-    vec4 l = normalize(vec4(1.0,1.0f,1.0f,0));
+    // esse é o da spotlight
+    vec4 l = normalize(view_global);
+    // esse é o normal (pras outras iluminações)
     vec4 l2 = normalize(camera_position-p);
 
     // Vetor que define o sentido da câmera em relação ao ponto atual.
-    vec4 v = normalize(vec4(view_global.x, view_global.y, view_global.z, 0));
+
+    // v da spotlight
+    vec4 v = normalize(view_global);
+
+    // v das outras luzes
     vec4 v2 = normalize(camera_position - p);
 
     // spotlight
     float alpha = radians(30.0f); //0.523599;
     // Vetor que define o sentido da reflexão especular ideal.
     // -l + 2n(n*l)
-    vec4 r = -l2 + 2*n*(dot(n,l2)); // PREENCHA AQUI o vetor de reflexão especular ideal
+    vec4 r = -l2 + 2*n*(dot(n,l2)); //  vetor de reflexão especular ideal
 
     // Parâmetros que definem as propriedades espectrais da superfície
     vec3 Kd; // Refletância difusa
@@ -100,28 +106,28 @@ void main()
     }
 
     // Espectro da fonte de iluminação
-    vec3 I = vec3(1.0f,1.0f,1.0f); // PREENCH AQUI o espectro da fonte de luz
+    vec3 I = vec3(1.0f,1.0f,1.0f); //  espectro da fonte de luz
     vec3 Ifundo = vec3(0.03f, 0.03f, 0.03f);
     // Espectro da luz ambiente
-    vec3 Ia = vec3(0.2f,0.2f,0.2f); // PREENCHA AQUI o espectro da luz ambiente
+    vec3 Ia = vec3(0.2f,0.2f,0.2f); //  espectro da luz ambiente
     vec3 Iafundo = vec3(0.2f,0.2f,0.2f);
 
     vec3 lambert_diffuse_term;
     vec3 ambient_term;
     vec3 phong_specular_term;
-    float fatt=1;
+
+
     if(lightsOn == 0) // lanterna ligada (luzes desligadas)
     {
         if( dot( normalize(p-l), normalize(v)) > cos(alpha)) // se tá sendo iluminado pela spotlight
         {
-            fatt = pow(dot( normalize(p-l), normalize(v)), 10.12);
+            float fatt = pow(dot( normalize(p-l), normalize(v)), 10.12); // função de atenuação
             // Termo difuso utilizando a lei dos cossenos de Lambert
             lambert_diffuse_term = Kd * I * max(0, dot(n,l2)); // PREENCHA AQUI o termo difuso de Lambert
             // Termo ambiente
             ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
             // Termo especular utilizando o modelo de iluminação de Phong
             phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
-
             color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
         }
         else
@@ -131,7 +137,7 @@ void main()
             ambient_term = Ka*Iafundo; // PREENCHA AQUI o termo ambiente
             // Termo especular utilizando o modelo de iluminação de Phong
             phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v2), q));
-             color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
+            color = (lambert_diffuse_term + ambient_term + phong_specular_term);
         }
         // Cor final do fragmento calculada com uma combinação dos termos difuso,
         // especular, e ambiente. Veja slide 133 do documento "Aula_17_e_18_Modelos_de_Iluminacao.pdf".
@@ -144,11 +150,8 @@ void main()
         ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
         // Termo especular utilizando o modelo de iluminação de Phong
         phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
-         color = lambert_diffuse_term + ambient_term + phong_specular_term;
+        color = lambert_diffuse_term + ambient_term + phong_specular_term;
     }
-
-
-
 
 
 
