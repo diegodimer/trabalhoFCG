@@ -29,9 +29,9 @@ uniform vec4 bbox_max;
 
 
 // imagens de textura
-uniform sampler2D TextureImage0;
-uniform sampler2D TextureImage1;
-uniform sampler2D TextureImage2;
+uniform sampler2D bloody;
+uniform sampler2D brick_wall;
+uniform sampler2D wooden_floor;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -56,24 +56,24 @@ void main()
     vec4 view_camera = vec4(0.0,0.0,-1.0,0.0);
     vec4 view_global = normalize(inverse(view) * view_camera);
 
+    vec4 spotlightPosition = camera_position; // onde a lanterna está
+    vec4 spotlightDirection = normalize(view_global); //Direção da lanterna
+    float spotlightOpening = radians(30.0f); //Ângulo de abertura da  lanterna
+
     // Vetor que define o sentido da fonte de luz em relação ao ponto atual.
-    // esse é o da spotlight
-    vec4 l = normalize(view_global);
-    // esse é o normal (pras outras iluminações)
-    vec4 l2 = normalize(camera_position-p);
+    vec4 spotlightl = normalize(spotlightPosition - p);
 
     // Vetor que define o sentido da câmera em relação ao ponto atual.
-    // v da spotlight
-    vec4 v = normalize(view_global);
-    // v das outras luzes
-    vec4 v2 = normalize(camera_position - p);
+    vec4 spotlightv = normalize(camera_position - p);
 
+    vec4 l = normalize(camera_position - position_world);
+    vec4 v = normalize(camera_position - p);
 
     // spotlight
     float alpha = radians(30.0f); //0.523599;
     // Vetor que define o sentido da reflexão especular ideal.
 
-    vec4 r = -l2 + 2*n*(dot(n,l2)); //  vetor de reflexão especular ideal
+    vec4 r = -l + 2*n*(dot(n,l)); //  vetor de reflexão especular ideal
 
     // Parâmetros que definem as propriedades espectrais da superfície
     vec3 Kd; // Refletância difusa
@@ -110,22 +110,22 @@ void main()
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
-        Kd = (texture(TextureImage1, vec2(U,V)).rgb);
-            // Equação de Iluminação
+        Kd = (texture(brick_wall, vec2(U,V)).rgb);
+        // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
-        Ka = Kd/2;
+        Ka = Kd;
         q = 1.0f;
     }
-        else if ( object_id == CHAO || object_id == TETO )
+    else if ( object_id == CHAO || object_id == TETO )
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
-        Kd = (texture(TextureImage1, vec2(U,V)).rgb);
-            // Equação de Iluminação
+        Kd = (texture(wooden_floor, vec2(U,V)).rgb);
+        // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
-        Ka = Kd/2;
+        Ka = Kd;
         q = 1.0f;
     }
     else // Objeto desconhecido = preto
@@ -148,39 +148,38 @@ void main()
     vec3 ambient_term;
     vec3 phong_specular_term;
 
-    float fatt = pow(dot( normalize(p-l), normalize(v)), 10.12); // função de atenuação
+
     if(lightsOn == 0) // lanterna ligada (luzes desligadas)
     {
-        if( dot( normalize(p-l), normalize(v)) > cos(alpha)) // se tá sendo iluminado pela spotlight
+        float fatt = pow(dot(normalize(p - spotlightPosition), spotlightDirection), 50.12); // função de atenuação
+        if( dot(normalize(p - spotlightPosition), spotlightDirection) > cos(spotlightOpening)) // se tá sendo iluminado pela spotlight
         {
 
             // Termo difuso utilizando a lei dos cossenos de Lambert
-            lambert_diffuse_term = Kd * I * max(0, dot(n,l2)); // PREENCHA AQUI o termo difuso de Lambert
+            lambert_diffuse_term = Kd * I * max(0, dot(n,l)); // PREENCHA AQUI o termo difuso de Lambert
             // Termo ambiente
             ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
             // Termo especular utilizando o modelo de iluminação de Phong
-            phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
-            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*(fatt);
+            phong_specular_term  = Ks*I*max(0,pow(dot(r,v), q)); // PREENCH AQUI o termo especular de Phong
+            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
         }
         else
         {
-                   lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l2));
-        ambient_term = Ka*Iafundo;
-        phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v2), q));
-        color = (lambert_diffuse_term + ambient_term + phong_specular_term)*(fatt);
+            lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l));
+            ambient_term = Ka*Iafundo;
+            phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v), q));
+            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
         }
-        // Cor final do fragmento calculada com uma combinação dos termos difuso,
-        // especular, e ambiente. Veja slide 133 do documento "Aula_17_e_18_Modelos_de_Iluminacao.pdf".
     }
+
     else // se a lanterna não tá ligada (tudo claro)
     {
-
         // Termo difuso utilizando a lei dos cossenos de Lambert
-        lambert_diffuse_term = Kd * I * max(0, dot(n,l2)); // PREENCHA AQUI o termo difuso de Lambert
+        lambert_diffuse_term = Kd * I * max(0, dot(n,l));
         // Termo ambiente
-        ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
+        ambient_term = Ka*Ia; // termo ambiente
         // Termo especular utilizando o modelo de iluminação de Phong
-        phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
+        phong_specular_term  = Ks*I*max(0,pow(dot(r,v), q)); // termo especular de Phong
         color = lambert_diffuse_term + ambient_term + phong_specular_term;
 
     }
@@ -188,17 +187,12 @@ void main()
 
     if(interruptor==0&&lightsOn == 1) //luzes desligadas e lanterna desligada!!!!!!!!!!!!!!!!!!!!!!!!!!teste do interruptor!!!!!!!!!!!!
     {
-        lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l2));
+        lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l));
         ambient_term = Ka*Iafundo;
-        phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v2), q));
-        color = (lambert_diffuse_term + ambient_term + phong_specular_term)*(fatt*0.05);
+        phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v), q));
+        color = (lambert_diffuse_term + ambient_term + phong_specular_term)*0.001;
     }
 
-        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-
-    //if(interruptor==0 && object_id == BUNNY){
-    //   color = vec3(0.5f,0.5f,0.0f);
-    //}
 
     // Cor final com correção gamma, considerando monitor sRGB.
     // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas

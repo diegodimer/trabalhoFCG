@@ -140,7 +140,7 @@ void movimentacaoCamera();
 void buildFirstScene(std::vector<struct sceneHelper>*  sceneVector);
 void lightSwitch(float, float, float);
 // Número de texturas carregadas pela função LoadTextureImage()
-GLuint g_NumLoadedTextures = 0;
+GLuint numOfLoadedTextures{0};
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -212,7 +212,7 @@ GLint view_uniform;
 GLint projection_uniform;
 GLint object_id_uniform;
 GLint lightsOn_uniform;
-GLint view_vector_uniform;
+
 
 //!!!!!!!!!!!!!!!!!!!!! VARIAVEIS DO BOTAO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 GLint interruptor_uniform;
@@ -309,11 +309,9 @@ int main(int argc, char* argv[])
 
     // Carregamos duas imagens para serem utilizadas como textura
 
-    LoadTextureImage("../../data/bloody.png");      // TextureImage1
-    LoadTextureImage("../../data/brick_wall.jpg");      // TextureImage0
-    LoadTextureImage("../../data/wooden_floor.jpg");      // TextureImage0
-printf("%d",g_NumLoadedTextures);
-    //LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
+    LoadTextureImage("../../data/bloody.png");      // TextureImage0
+    LoadTextureImage("../../data/brick_wall.jpg");      // TextureImage1
+    LoadTextureImage("../../data/wooden_floor.jpg");      // TextureImage2
 
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
@@ -446,7 +444,7 @@ printf("%d",g_NumLoadedTextures);
         glUniform1i(lightsOn_uniform,lightsOn);
         glUniformMatrix4fv(view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform4fv(view_vector_uniform, 1, glm::value_ptr(camera_view_vector));
+
 
 
 
@@ -1698,9 +1696,6 @@ bool TestRayOBBIntersection(
 // Função que carrega uma imagem para ser utilizada como textura
 void LoadTextureImage(const char* filename)
 {
-    printf("Carregando imagem \"%s\"... ", filename);
-
-    // Primeiro fazemos a leitura da imagem do disco
     stbi_set_flip_vertically_on_load(true);
     int width;
     int height;
@@ -1710,32 +1705,26 @@ void LoadTextureImage(const char* filename)
     if ( data == NULL )
     {
         fprintf(stderr, "ERROR: Cannot open image file \"%s\".\n", filename);
-        std::exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
-    printf("OK (%dx%d).\n", width, height);
-
-    // Agora criamos objetos na GPU com OpenGL para armazenar a textura
     GLuint texture_id;
     GLuint sampler_id;
     glGenTextures(1, &texture_id);
     glGenSamplers(1, &sampler_id);
 
-    // Veja slide 100 do documento "Aula_20_e_21_Mapeamento_de_Texturas.pdf"
-    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    // Parâmetros de amostragem da textura. Falaremos sobre eles em uma próxima aula.
     glSamplerParameteri(sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glSamplerParameteri(sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // Agora enviamos a imagem lida do disco para a GPU
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
 
-    GLuint textureunit = g_NumLoadedTextures;
+    GLuint textureunit = numOfLoadedTextures;
     glActiveTexture(GL_TEXTURE0 + textureunit);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
@@ -1744,7 +1733,7 @@ void LoadTextureImage(const char* filename)
 
     stbi_image_free(data);
 
-    g_NumLoadedTextures += 1;
+    numOfLoadedTextures += 1;
 }
 
 void movimentacaoCamera(){
