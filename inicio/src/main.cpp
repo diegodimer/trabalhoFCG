@@ -90,6 +90,16 @@ void LoadShader(const char* filename, GLuint shader_id); // Função utilizada p
 GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id); // Cria um programa de GPU
 void PrintObjModelInfo(ObjModel*); // Função para debugging
 
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!DECLARAÇÃO DA INTERSEÇÃO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+bool TestRayOBBIntersection(
+	glm::vec3 ray_origin,        // Ray origin, in world space
+	glm::vec3 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+	glm::vec3 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+	glm::vec3 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+	glm::mat4 ModelMatrix,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+	float& intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+);
+
 // Declaração de funções auxiliares para renderizar texto dentro da janela
 // OpenGL. Estas funções estão definidas no arquivo "textrendering.cpp".
 void TextRendering_Init();
@@ -187,6 +197,11 @@ GLint object_id_uniform;
 GLint lightsOn_uniform;
 GLint view_vector_uniform;
 
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEIS DO BOTAO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+GLint interruptor_uniform;
+int interruptor=1;
+bool teste_interruptor=false;
+
 int lightsOn;
 
 bool wPressed = false;
@@ -200,6 +215,7 @@ float g_FreeCamy = 1.5f;
 float g_FreeCamz = 4.0f;
 int main(int argc, char* argv[])
 {
+    interruptor=1;
     lightsOn=1;
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
@@ -284,6 +300,9 @@ int main(int argc, char* argv[])
     ObjModel planemodel("../../data/plane.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
+
+
+
 
     if ( argc > 1 )
     {
@@ -399,7 +418,7 @@ int main(int argc, char* argv[])
         // Note que, no sistema de coordenadas da câmera, os planos near e far
         // estão no sentido negativo! Veja slides 190-193 do documento "Aula_09_Projecoes.pdf".
         float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -15.0f; // Posição do "far plane"
+        float farplane  = -50.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -424,9 +443,50 @@ int main(int argc, char* argv[])
 
         glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
+
+
+
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TESTES DO BOTAO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        if(teste_interruptor){
+            //variavel é true quando usuario solta botao direito
+            teste_interruptor = false;
+            //vetor ray_direction (sentido da camera)
+            float norma_camera = sqrt( x*x + y*y + z*z );
+            glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
+
+            // coordenadas minimas e máximas da esfera
+            glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
+            glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+
+            // transformações da esfera
+            glm::mat4 model_esfera = Matrix_Translate(-1.0f,0.0f,0.0f);
+
+            float intersection_distance;
+            //testa se tocou o botão
+            if(TestRayOBBIntersection(
+                glm::vec3(g_FreeCamX,g_FreeCamy,g_FreeCamz),  // Ray origin = posição da câmera
+                ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                model_esfera,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+            )){
+                printf("\nlol");
+
+                if(interruptor==0)
+                    interruptor=1;
+                else interruptor=0;
+
+                //glUniform1i(interruptor_uniform,interruptor);
+
+            }
+        }
+
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
+        glUniform1i(interruptor_uniform,interruptor);
         glUniform1i(lightsOn_uniform,lightsOn);
         glUniformMatrix4fv(view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
@@ -452,48 +512,72 @@ int main(int argc, char* argv[])
         glUniform1i(object_id_uniform, BUNNY);
         DrawVirtualObject("bunny");
 
+
+
         // desenho do plano
         // desenho do plano
-        model = Matrix_Translate(0.0f,-1.0f,0.0f)
-                * Matrix_Scale(5.0f,1.0f,5.0f);
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
 
-        model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
+        float comprimento_corredor = 20.0f;
+        //formato longo do corredor
+        model = Matrix_Scale(5.0f,1.0f,comprimento_corredor);
+
+        PushMatrix(model);
+            // CHÃO
+            model =Matrix_Translate(0.0f,-1.0f,comprimento_corredor-5.0f)*model;
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("plane");
+        PopMatrix(model);
+
+        PushMatrix(model);
+            //PAREDE À ESQUERDA DO COELHO
+            model= Matrix_Translate(5.0f,4.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(1.5709)*model;
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("plane");
+        PopMatrix(model);
+
+        PushMatrix(model);
+            //PAREDE À DIREITA DO COELHO
+            model= Matrix_Translate(-5.0f,4.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(-1.5709)*model;
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("plane");
+        PopMatrix(model);
+
+        PushMatrix(model);
+            //TETO
+            model= Matrix_Translate(0.0f,9.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(3.14159)*model;
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("plane");
+        PopMatrix(model);
+
+        //formato 10x10 das paredes do fim e início do corredor
+        model = Matrix_Scale(5.0f,1.0f,5.0f);
 
 
-        model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
+        PushMatrix(model);
+            //PAREDE ATRÁS DO COELHO
+            model= Matrix_Translate(0.0f,4.0f,-5.0f)*Matrix_Rotate_X(1.5709)*model;
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("plane");
+        PopMatrix(model);
 
-        model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
+        PushMatrix(model);
+            //PAREDE NO FIM DO CORREDOR
+            model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*model;
+            glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
+            glUniform1i(object_id_uniform, PLANE);
+            DrawVirtualObject("plane");
 
-        model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
-
-        model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*model;
-        model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*model;
-        glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
-        glUniform1i(object_id_uniform, PLANE);
-        DrawVirtualObject("plane");
 //        model = Matrix_Translate(0.0f,3.0f,-4.0f)
 //              * Matrix_Scale(4.0f,4.0f,1.0f)
 //              * Matrix_Rotate_X(1.5708);
 //        glUniformMatrix4fv(model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
 //        glUniform1i(object_id_uniform, PLANE);
 //        DrawVirtualObject("plane");
-
-
 
 
 
@@ -603,6 +687,9 @@ void LoadShadersFromFiles()
     view_uniform            = glGetUniformLocation(program_id, "view"); // Variável da matriz "view" em shader_vertex.glsl
     projection_uniform      = glGetUniformLocation(program_id, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
     object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
+
+    lightsOn_uniform = glGetUniformLocation(program_id, "lightsOn");
+    interruptor_uniform = glGetUniformLocation(program_id, "interruptor");
 }
 
 // Função que pega a matriz M e guarda a mesma no topo da pilha
@@ -1032,6 +1119,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // Quando o usuário soltar o botão esquerdo do mouse, atualizamos a
         // variável abaixo para false.
         g_RightMouseButtonPressed = false;
+
+        //!!!!!!!!!!!!!!!!!!!!!!!!!TESTE INTERRUPTOR!!!!!!!!!!!!!!!!!!!!!
+        teste_interruptor = true;
     }
     if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
     {
@@ -1581,6 +1671,127 @@ void PrintObjModelInfo(ObjModel* model)
     }
 }
 
+// testa a intersecção entre um raio e algum objeto
+bool TestRayOBBIntersection(
+	glm::vec3 ray_origin,        // Ray origin, in world space
+	glm::vec3 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+	glm::vec3 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+	glm::vec3 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+	glm::mat4 ModelMatrix,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+	float& intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+){
+    // tMin is the largest “near” intersection currently found;
+    // tMax is the smallest “far” intersection currently found.
+    // Delta is used to compute the intersections with the planes.
+    float tMin = 0.0f;
+    float tMax = 100000.0f;
+
+    //aparentemente o indice do vetor é algo como 0 = x, 1 = y, 2 = z, 3 = x,y e z
+    glm::vec3 OBBposition_worldspace(ModelMatrix[3].x, ModelMatrix[3].y, ModelMatrix[3].z);
+
+    glm::vec3 delta = OBBposition_worldspace - ray_origin;
+
+
+
+    {
+        //teste para o x
+        glm::vec3 xaxis(ModelMatrix[0].x, ModelMatrix[0].y, ModelMatrix[0].z);
+        float e = glm::dot(xaxis, delta);
+        float f = glm::dot(ray_direction, xaxis);
+        if ( fabs(f) > 0.001f )
+        {
+            float t1 = (e+aabb_min.x)/f; // Intersection with the "left" plane
+            float t2 = (e+aabb_max.x)/f; // Intersection with the "right" plane
+
+            if (t1>t2)
+            {
+                float w=t1;
+                t1=t2;
+                t2=w; // swap t1 and t2
+            }
+
+            if ( t2 < tMax )
+                tMax = t2; // tMax is the nearest "far" intersection amongst x planes
+
+            if ( t1 > tMin )
+                tMin = t1; // tMin is the farthest "near" intersection amongst x planes
+
+            if (tMax < tMin )
+                return false; // If "far" is closer than "near", then there is NO intersection.
+        }
+        else if(-e+aabb_min.x > 0.0f || -e+aabb_max.x < 0.0f)
+				return false;
+
+    }
+    {
+        //teste para o y
+        glm::vec3 yaxis(ModelMatrix[1].x, ModelMatrix[1].y, ModelMatrix[1].z);
+        float e = glm::dot(yaxis, delta);
+        float f = glm::dot(ray_direction, yaxis);
+
+        if ( fabs(f) > 0.001f )
+        {
+            float t1 = (e+aabb_min.y)/f; // Intersection with the "left" plane
+            float t2 = (e+aabb_max.y)/f; // Intersection with the "right" plane
+
+            if (t1>t2)
+            {
+                float w=t1;
+                t1=t2;
+                t2=w; // swap t1 and t2
+            }
+
+            if ( t2 < tMax )
+                tMax = t2; // tMax is the nearest "far" intersection amongst y planes
+
+            if ( t1 > tMin )
+                tMin = t1; // tMin is the farthest "near" intersection amongst y planes
+
+            if (tMax < tMin )
+                return false; // If "far" is closer than "near", then there is NO intersection.
+        }
+        else if(-e+aabb_min.y > 0.0f || -e+aabb_max.y < 0.0f)
+				return false;
+    }
+
+    {
+       //teste para o z
+        glm::vec3 zaxis(ModelMatrix[2].x, ModelMatrix[2].y, ModelMatrix[2].z);
+        float e = glm::dot(zaxis, delta);
+        float f = glm::dot(ray_direction, zaxis);
+
+        if ( fabs(f) > 0.001f )
+        {
+            float t1 = (e+aabb_min.z)/f; // Intersection with the "left" plane
+            float t2 = (e+aabb_max.z)/f; // Intersection with the "right" plane
+
+            if (t1>t2)
+                float w=t1;
+
+            if (t1>t2)
+            {
+                float w=t1;
+                t1=t2;
+                t2=w; // swap t1 and t2
+            }
+
+            if ( t2 < tMax )
+                tMax = t2; // tMax is the nearest "far" intersection amongst z planes
+
+            if ( t1 > tMin )
+                tMin = t1; // tMin is the farthest "near" intersection amongst z planes
+
+            if (tMax < tMin )
+                return false; // If "far" is closer than "near", then there is NO intersection.
+        }
+        else if(-e+aabb_min.z > 0.0f || -e+aabb_max.z < 0.0f)
+				return false;
+    }
+    intersection_distance = tMin;
+    return true;
+
+
+}
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
 // vim: set spell spelllang=pt_br :
 

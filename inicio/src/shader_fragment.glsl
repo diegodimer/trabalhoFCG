@@ -1,5 +1,4 @@
 #version 330 core
-
 // Atributos de fragmentos recebidos como entrada ("in") pelo Fragment Shader.
 // Neste exemplo, este atributo foi gerado pelo rasterizador como a
 // interpolação da posição global e a normal de cada vértice, definidas em
@@ -13,6 +12,7 @@ uniform mat4 view;
 uniform mat4 projection;
 uniform int lightsOn;
 uniform vec4 view_vector;
+uniform int interruptor;
 
 // Identificador que define qual objeto está sendo desenhado no momento
 #define SPHERE 0
@@ -77,10 +77,13 @@ void main()
     {
         // PREENCHA AQUI
         // Propriedades espectrais do coelho
+
         Kd = vec3(0.08f, 0.4f, 0.8f);
         Ks = vec3 (0.8f, 0.8f, 0.8f);
         Ka = Kd/2;
         q = 32.0f;
+
+
     }
     else if ( object_id == PLANE )
     {
@@ -138,16 +141,27 @@ void main()
     }
     else // se a lanterna não tá ligada (tudo claro)
     {
-        // Termo difuso utilizando a lei dos cossenos de Lambert
-        lambert_diffuse_term = Kd * I * max(0, dot(n,l2)); // PREENCHA AQUI o termo difuso de Lambert
-        // Termo ambiente
-        ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
-        // Termo especular utilizando o modelo de iluminação de Phong
-        phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
-         color = lambert_diffuse_term + ambient_term + phong_specular_term;
+            // Termo difuso utilizando a lei dos cossenos de Lambert
+            lambert_diffuse_term = Kd * I * max(0, dot(n,l2)); // PREENCHA AQUI o termo difuso de Lambert
+            // Termo ambiente
+            ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
+            // Termo especular utilizando o modelo de iluminação de Phong
+            phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
+            color = lambert_diffuse_term + ambient_term + phong_specular_term;
     }
 
 
+    if(interruptor==0&&lightsOn == 1) //luzes desligadas e lanterna desligada!!!!!!!!!!!!!!!!!!!!!!!!!!teste do interruptor!!!!!!!!!!!!
+        {
+            lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l2));
+            ambient_term = Ka*Iafundo;
+            phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v2), q));
+            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
+        }
+
+    //if(interruptor==0 && object_id == BUNNY){
+    //   color = vec3(0.5f,0.5f,0.0f);
+    //}
 
 
 
