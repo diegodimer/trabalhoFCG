@@ -135,10 +135,10 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-
+void movimentacaoCamera();
 /* construtor de cena */
 void buildFirstScene(std::vector<struct sceneHelper>*  sceneVector);
-
+void lightSwitch(float, float, float);
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
 
@@ -308,7 +308,11 @@ int main(int argc, char* argv[])
     LoadShadersFromFiles();
 
     // Carregamos duas imagens para serem utilizadas como textura
+
+    LoadTextureImage("../../data/bloody.png");      // TextureImage1
     LoadTextureImage("../../data/brick_wall.jpg");      // TextureImage0
+    LoadTextureImage("../../data/wooden_floor.jpg");      // TextureImage0
+printf("%d",g_NumLoadedTextures);
     //LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
 
 
@@ -354,6 +358,8 @@ int main(int argc, char* argv[])
     #define SPHERE 0
     #define BUNNY  1
     #define PLANE  2
+    #define CHAO   3
+    #define TETO   4
 
 
     // vector da cena
@@ -366,74 +372,26 @@ int main(int argc, char* argv[])
     {
         // constrói primeira cena (aqui se vir mais cenas fazemos aqui mesmo)
         // precisa que esse vetor seja reconstruído varias vezes por causa da interação, tipo o movimento do coelho
-        if (sceneNumber == 1  ){
+       if (sceneNumber == 1  ){
             // limpa o vetor
-            sceneVector.clear();
+          sceneVector.clear();
         // constrói o vetor de novo
             buildFirstScene(&sceneVector);
-        }
+
+    }
         // Aqui executamos as operações de renderização
 
-        // Definimos a cor do "fundo" do framebuffer como branco.  Tal cor é
-        // definida como coeficientes RGBA: Red, Green, Blue, Alpha; isto é:
-        // Vermelho, Verde, Azul, Alpha (valor de transparência).
-        // Conversaremos sobre sistemas de cores nas aulas de Modelos de Iluminação.
-        //
-        //           R     G     B     A
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         // "Pintamos" todos os pixels do framebuffer com a cor definida acima,
         // e também resetamos todos os pixels do Z-buffer (depth buffer).
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         // Pedimos para a GPU utilizar o programa de GPU criado acima (contendo
         // os shaders de vértice e fragmentos).
         glUseProgram(program_id);
 
 
-
-        /// ////////////////////////////////////////////////////////
-        // as teclas WASD são o que podem mudar o CENTRO da camera LIVRE
-        // ir na direção W ou S é aproximar da origem (centro da camera) ou afastar do centro da camera
-        // portanto, um delta de velocidade * a coordenada do centro da camera
-        if(sPressed)
-        {
-            g_FreeCamX += 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
-            // g_FreeCamy += 0.05f*sin(g_CameraPhi);
-            g_FreeCamz += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
-        };
-        if(wPressed)
-        {
-            g_FreeCamX -= 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
-            // g_FreeCamy -= 0.05f*sin(g_CameraPhi);
-            g_FreeCamz -= 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
-        };
-        // mexer para esquerda ou para direita é um deslocamento na direção do vetor u das coordenadas da CAMERA
-        // o vetor u é dado pelo produto vetorial (cross product) de -view com up_vector.
-        // o vetor view (como definido abaixo) é as coordenadas do centro da camera negadas, então:
-        // | -Cx |   | 0 |
-        // | -Cy | X | 1 |
-        // | -Cz |   | 0 |
-        // o que resulta em
-        // | -Cy*0 + Cz*1 |     | +Cz |
-        // | -Cz*0 + Cx*0 | ==  |  0  |
-        // | -Cx*1 + Cy*0 |     | -Cx |
-        // portanto, um deslocamento para esquerda seria somar um na coordenada X um +Cz, que é definido por
-        // cos(g_CameraPhi) * sin (g_CameraTheta) e na coordenada Z um -Cx, definido por cos(cameraPhi)*sin(cameraTheta)
-        // multiplicado por um deslocamento determinando a "velocidade"
-        if(dPressed)
-        {
-            g_FreeCamz -= 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
-            g_FreeCamX += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
-        };
-        if (aPressed)
-        {
-            g_FreeCamX -= 0.05*cos(g_CameraPhi) * cos(g_CameraTheta);
-            g_FreeCamz += 0.05*cos(g_CameraPhi) * sin(g_CameraTheta);
-        }
-
-
-
+        movimentacaoCamera();
         // Computamos a posição da câmera utilizando coordenadas esféricas.  As
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
@@ -444,14 +402,10 @@ int main(int argc, char* argv[])
         float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
-        // Veja slides 172-182 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
         glm::vec4 camera_position_c  = glm::vec4(g_FreeCamX, g_FreeCamy, g_FreeCamz, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
         //glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
         glm::vec4 camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
         glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
-
-        // Computamos a matriz "View" utilizando os parâmetros da câmera para
-        // definir o sistema de coordenadas da câmera.  Veja slide 186 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
         // Agora computamos a matriz de Projeção.
@@ -483,47 +437,7 @@ int main(int argc, char* argv[])
             projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
         }
 
-        glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
-
-
-
-
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TESTES DO BOTAO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        if(teste_interruptor){
-            //variavel é true quando usuario solta botao direito
-            teste_interruptor = false;
-            //vetor ray_direction (sentido da camera)
-            float norma_camera = sqrt( x*x + y*y + z*z );
-            glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
-
-            // coordenadas minimas e máximas da esfera
-            glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
-            glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
-
-            // transformações da esfera
-            glm::mat4 model_esfera = Matrix_Translate(-1.0f,0.0f,0.0f);
-
-            float intersection_distance;
-            //testa se tocou o botão
-            if(TestRayOBBIntersection(
-                glm::vec3(g_FreeCamX,g_FreeCamy,g_FreeCamz),  // Ray origin = posição da câmera
-                ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
-                aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
-                aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
-                model_esfera,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
-                intersection_distance // Output : distance between ray_origin and the intersection with the OBB
-            )){
-                printf("\nlol");
-
-                if(interruptor==0)
-                    interruptor=1;
-                else interruptor=0;
-
-                //glUniform1i(interruptor_uniform,interruptor);
-
-            }
-        }
+        lightSwitch(x,y,z);
 
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
@@ -537,6 +451,7 @@ int main(int argc, char* argv[])
 
 
         /// desenho da cena
+        glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
         for(std::vector<int>::size_type i = 0; i != sceneVector.size(); i++) {
             model = sceneVector[i].model;
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
@@ -1601,49 +1516,58 @@ void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
         strcpy(Objeto.name, "plane");
         Objeto.nameId = PLANE;
         PushMatrix(Objeto.model);
-            // CHÃO
-            Objeto.model =Matrix_Translate(0.0f,-1.0f,comprimento_corredor-5.0f)*Objeto.model;
+        // CHÃO
+        Objeto.model =Matrix_Translate(0.0f,-1.0f,comprimento_corredor-5.0f)*Objeto.model;
+        Objeto.nameId = CHAO;
+        sceneVector->push_back(Objeto);
 
-            sceneVector->push_back(Objeto);
+
         PopMatrix(Objeto.model);
-
-        PushMatrix(Objeto.model);
-            //PAREDE À ESQUERDA DO COELHO
-            Objeto.model= Matrix_Translate(5.0f,4.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(1.5709)*Objeto.model;
-
-            sceneVector->push_back(Objeto);
-        PopMatrix(Objeto.model);
-
-        PushMatrix(Objeto.model);
-            //PAREDE À DIREITA DO COELHO
-            Objeto.model= Matrix_Translate(-5.0f,4.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(-1.5709)*Objeto.model;
-
-            sceneVector->push_back(Objeto);
-        PopMatrix(Objeto.model);
-
         PushMatrix(Objeto.model);
             //TETO
-            Objeto.model= Matrix_Translate(0.0f,9.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(3.14159)*Objeto.model;
+        Objeto.model= Matrix_Translate(0.0f,9.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(3.14159)*Objeto.model;
+        Objeto.nameId = TETO;
+        sceneVector->push_back(Objeto);
+        PopMatrix(Objeto.model);
+        PushMatrix(Objeto.model);
 
+        //PAREDE À ESQUERDA DO COELHO
+        Objeto.model= Matrix_Translate(-5.0f,4.0f,comprimento_corredor-5.0f)
+            * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
+            * Matrix_Rotate_Y(1.57)
+            * Matrix_Rotate_X(1.57);
+            Objeto.nameId = PLANE;
             sceneVector->push_back(Objeto);
+
+        PopMatrix(Objeto.model);
+        PushMatrix(Objeto.model);
+
+        // parede a direita
+        Objeto.model= Matrix_Translate(5.0f,4.0f,comprimento_corredor-5.0f)
+            * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
+            * Matrix_Rotate_Y(1.57)
+            * Matrix_Rotate_X(4.71159);
+            sceneVector->push_back(Objeto);
+
+        PopMatrix(Objeto.model);
         PopMatrix(Objeto.model);
 
-        //formato 10x10 das paredes do fim e início do corredor
+
+        // largura do corredor = 5
         Objeto.model = Matrix_Scale(5.0f,1.0f,5.0f);
-
-
         PushMatrix(Objeto.model);
-            //PAREDE ATRÁS DO COELHO
-            Objeto.model= Matrix_Translate(0.0f,4.0f,-5.0f)*Matrix_Rotate_X(1.5709)*Objeto.model;
 
-            sceneVector->push_back(Objeto);
+        //parede atrás do coelho
+        Objeto.model= Matrix_Translate(0.0f,4.0f,-5.0f)*Matrix_Rotate_X(1.5709)*Objeto.model;
+        sceneVector->push_back(Objeto);
+
         PopMatrix(Objeto.model);
-
         PushMatrix(Objeto.model);
-            //PAREDE NO FIM DO CORREDOR
-            Objeto.model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*Objeto.model;
 
-            sceneVector->push_back(Objeto);
+        Objeto.model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*Objeto.model;
+        sceneVector->push_back(Objeto);
+
+
 }
 
 
@@ -1822,3 +1746,82 @@ void LoadTextureImage(const char* filename)
 
     g_NumLoadedTextures += 1;
 }
+
+void movimentacaoCamera(){
+        /// ////////////////////////////////////////////////////////
+        // as teclas WASD são o que podem mudar o CENTRO da camera LIVRE
+        // ir na direção W ou S é aproximar da origem (centro da camera) ou afastar do centro da camera
+        // portanto, um delta de velocidade * a coordenada do centro da camera
+        if(sPressed)
+        {
+            g_FreeCamX += 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
+            // g_FreeCamy += 0.05f*sin(g_CameraPhi);
+            g_FreeCamz += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
+        };
+        if(wPressed)
+        {
+            g_FreeCamX -= 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
+            // g_FreeCamy -= 0.05f*sin(g_CameraPhi);
+            g_FreeCamz -= 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
+        };
+        // mexer para esquerda ou para direita é um deslocamento na direção do vetor u das coordenadas da CAMERA
+        // o vetor u é dado pelo produto vetorial (cross product) de -view com up_vector.
+        // o vetor view (como definido abaixo) é as coordenadas do centro da camera negadas, então:
+        // | -Cx |   | 0 |
+        // | -Cy | X | 1 |
+        // | -Cz |   | 0 |
+        // o que resulta em
+        // | -Cy*0 + Cz*1 |     | +Cz |
+        // | -Cz*0 + Cx*0 | ==  |  0  |
+        // | -Cx*1 + Cy*0 |     | -Cx |
+        // portanto, um deslocamento para esquerda seria somar um na coordenada X um +Cz, que é definido por
+        // cos(g_CameraPhi) * sin (g_CameraTheta) e na coordenada Z um -Cx, definido por cos(cameraPhi)*sin(cameraTheta)
+        // multiplicado por um deslocamento determinando a "velocidade"
+        if(dPressed)
+        {
+            g_FreeCamz -= 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
+            g_FreeCamX += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
+        };
+        if (aPressed)
+        {
+            g_FreeCamX -= 0.05*cos(g_CameraPhi) * cos(g_CameraTheta);
+            g_FreeCamz += 0.05*cos(g_CameraPhi) * sin(g_CameraTheta);
+        }
+}
+
+void lightSwitch(float x, float y, float z){
+    if(teste_interruptor){
+            //variavel é true quando usuario solta botao direito
+            teste_interruptor = false;
+            //vetor ray_direction (sentido da camera)
+            float norma_camera = sqrt( x*x + y*y + z*z );
+            glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
+
+            // coordenadas minimas e máximas da esfera
+            glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
+            glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+
+            // transformações da esfera
+            glm::mat4 model_esfera = Matrix_Translate(-1.0f,0.0f,0.0f);
+
+            float intersection_distance;
+            //testa se tocou o botão
+            if(TestRayOBBIntersection(
+                glm::vec3(g_FreeCamX,g_FreeCamy,g_FreeCamz),  // Ray origin = posição da câmera
+                ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                model_esfera,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+            )){
+                printf("\nlol");
+
+                if(interruptor==0)
+                    interruptor=1;
+                else interruptor=0;
+
+                //glUniform1i(interruptor_uniform,interruptor);
+
+            }
+        }
+};

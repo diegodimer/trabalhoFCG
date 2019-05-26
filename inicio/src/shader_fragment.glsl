@@ -19,6 +19,8 @@ uniform int interruptor;
 #define SPHERE 0
 #define BUNNY  1
 #define PLANE  2
+#define CHAO   3
+#define TETO   4
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -80,7 +82,7 @@ void main()
     float q; // Expoente especular para o modelo de iluminação de Phong
 
     // cordenadas de textura
-    float U,V;
+    float U=0,V=0;
 
     if ( object_id == SPHERE )
     {
@@ -108,19 +110,27 @@ void main()
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
-        vec3 Kd = normalize(texture(TextureImage0, vec2(U,V)).rgb);
+        Kd = (texture(TextureImage1, vec2(U,V)).rgb);
             // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd/2;
         q = 1.0f;
-
-  //  return;
-
-
+    }
+        else if ( object_id == CHAO || object_id == TETO )
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(TextureImage1, vec2(U,V)).rgb);
+            // Equação de Iluminação
+        Ks = vec3(0.0,0.0,0.0);
+        Ka = Kd/2;
+        q = 1.0f;
     }
     else // Objeto desconhecido = preto
     {
-        Kd = vec3( 0, 0, 0);
+        Kd = vec3(0,0,0);
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd/2;
         q = 1.0;
