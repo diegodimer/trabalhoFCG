@@ -1,25 +1,21 @@
 #version 330 core
-// Atributos de fragmentos recebidos como entrada ("in") pelo Fragment Shader.
-// Neste exemplo, este atributo foi gerado pelo rasterizador como a
-// interpolação da posição global e a normal de cada vértice, definidas em
-// "shader_vertex.glsl" e "main.cpp".
+
 in vec4 position_world;
 in vec4 normal;
 
-// Posição do vértice atual no sistema de coordenadas local do modelo.
 in vec4 position_model;
 
-// Coordenadas de textura obtidas do arquivo OBJ (se existirem!)
+
 in vec2 texcoords;
 
-// Matrizes computadas no código C++ e enviadas para a GPU
+
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 uniform int lightsOn;
 uniform int interruptor;
 
-// Identificador que define qual objeto está sendo desenhado no momento
+
 #define SPHERE 0
 #define BUNNY  1
 #define PLANE  2
@@ -45,16 +41,10 @@ out vec3 color;
 
 void main()
 {
-    // Obtemos a posição da câmera utilizando a inversa da matriz que define o
-    // sistema de coordenadas da câmera.
+
     vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
     vec4 camera_position = inverse(view) * origin;
 
-    // O fragmento atual é coberto por um ponto que percente à superfície de um
-    // dos objetos virtuais da cena. Este ponto, p, possui uma posição no
-    // sistema de coordenadas global (World coordinates). Esta posição é obtida
-    // através da interpolação, feita pelo rasterizador, da posição de cada
-    // vértice.
     vec4 p = position_world;
 
     // Normal do fragmento atual, interpolada pelo rasterizador a partir das
@@ -71,17 +61,16 @@ void main()
     vec4 l2 = normalize(camera_position-p);
 
     // Vetor que define o sentido da câmera em relação ao ponto atual.
-
     // v da spotlight
     vec4 v = normalize(view_global);
-
     // v das outras luzes
     vec4 v2 = normalize(camera_position - p);
+
 
     // spotlight
     float alpha = radians(30.0f); //0.523599;
     // Vetor que define o sentido da reflexão especular ideal.
-    // -l + 2n(n*l)
+
     vec4 r = -l2 + 2*n*(dot(n,l2)); //  vetor de reflexão especular ideal
 
     // Parâmetros que definem as propriedades espectrais da superfície
@@ -95,10 +84,11 @@ void main()
 
     if ( object_id == SPHERE )
     {
-                Kd = vec3(0.08f, 0.4f, 0.8f);
-        Ks = vec3 (0.1f, 0.1f, 0.1f);
-        Ka = vec3(0,0,0);
-        q = 1;
+
+        Kd = vec3( 0.8f, 0.4f, 0.08f);
+        Ks = vec3(0.0,0.0,0.0);
+        Ka = Kd/2;
+        q = 1.0;
     }
     else if ( object_id == BUNNY )
     {
@@ -114,11 +104,19 @@ void main()
     }
     else if ( object_id == PLANE )
     {
-
-           Kd = vec3(0.7f, 0.6f, 0.5f);
-        Ks = vec3 (0.8f, 0.8f, 0.8f);
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        vec3 Kd = normalize(texture(TextureImage0, vec2(U,V)).rgb);
+            // Equação de Iluminação
+        Ks = vec3(0.0,0.0,0.0);
         Ka = Kd/2;
-        q = 32.0f;
+        q = 1.0f;
+
+  //  return;
+
+
     }
     else // Objeto desconhecido = preto
     {
@@ -140,7 +138,7 @@ void main()
     vec3 ambient_term;
     vec3 phong_specular_term;
 
-    float fatt = pow(dot( normalize(p-l), normalize(v)), 1.12); // função de atenuação
+    float fatt = pow(dot( normalize(p-l), normalize(v)), 10.12); // função de atenuação
     if(lightsOn == 0) // lanterna ligada (luzes desligadas)
     {
         if( dot( normalize(p-l), normalize(v)) > cos(alpha)) // se tá sendo iluminado pela spotlight
@@ -152,16 +150,14 @@ void main()
             ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
             // Termo especular utilizando o modelo de iluminação de Phong
             phong_specular_term  = Ks*I*max(0,pow(dot(r,v2), q)); // PREENCH AQUI o termo especular de Phong
-            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
+            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*(fatt);
         }
         else
         {
-            lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l2)); // PREENCHA AQUI o termo difuso de Lambert
-            // Termo ambiente
-            ambient_term = Ka*Iafundo; // PREENCHA AQUI o termo ambiente
-            // Termo especular utilizando o modelo de iluminação de Phong
-            phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v2), q));
-            color = (lambert_diffuse_term + ambient_term + phong_specular_term);
+                   lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l2));
+        ambient_term = Ka*Iafundo;
+        phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v2), q));
+        color = (lambert_diffuse_term + ambient_term + phong_specular_term)*(fatt);
         }
         // Cor final do fragmento calculada com uma combinação dos termos difuso,
         // especular, e ambiente. Veja slide 133 do documento "Aula_17_e_18_Modelos_de_Iluminacao.pdf".
