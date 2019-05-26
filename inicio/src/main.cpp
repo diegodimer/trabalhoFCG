@@ -42,6 +42,8 @@
 // Headers da biblioteca para carregar modelos obj
 #include <tiny_obj_loader.h>
 
+#include <stb_image.h>
+
 // Headers locais, definidos na pasta "include/"
 #include "utils.h"
 #include "matrices.h"
@@ -73,6 +75,7 @@ struct ObjModel
     }
 };
 
+
 struct sceneHelper{
     glm::mat4 model;
     char name[100];
@@ -87,12 +90,23 @@ void PopMatrix(glm::mat4& M);
 void BuildTrianglesAndAddToVirtualScene(ObjModel*); // Constrói representação de um ObjModel como malha de triângulos para renderização
 void ComputeNormals(ObjModel* model); // Computa normais de um ObjModel, caso não existam.
 void LoadShadersFromFiles(); // Carrega os shaders de vértice e fragmento, criando um programa de GPU
+void LoadTextureImage(const char* filename); // Função que carrega imagens de textura
 void DrawVirtualObject(const char* object_name); // Desenha um objeto armazenado em g_VirtualScene
 GLuint LoadShader_Vertex(const char* filename);   // Carrega um vertex shader
 GLuint LoadShader_Fragment(const char* filename); // Carrega um fragment shader
 void LoadShader(const char* filename, GLuint shader_id); // Função utilizada pelas duas acima
 GLuint CreateGpuProgram(GLuint vertex_shader_id, GLuint fragment_shader_id); // Cria um programa de GPU
 void PrintObjModelInfo(ObjModel*); // Função para debugging
+
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!DECLARAÇÃO DA INTERSEÇÃO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+bool TestRayOBBIntersection(
+	glm::vec3 ray_origin,        // Ray origin, in world space
+	glm::vec3 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+	glm::vec3 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+	glm::vec3 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+	glm::mat4 ModelMatrix,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+	float& intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+);
 
 // Declaração de funções auxiliares para renderizar texto dentro da janela
 // OpenGL. Estas funções estão definidas no arquivo "textrendering.cpp".
@@ -125,6 +139,9 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 /* construtor de cena */
 void buildFirstScene(std::vector<struct sceneHelper>*  sceneVector);
 
+// Número de texturas carregadas pela função LoadTextureImage()
+GLuint g_NumLoadedTextures = 0;
+
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -134,7 +151,10 @@ struct SceneObject
     int          num_indices; // Número de índices do objeto dentro do vetor indices[] definido em BuildTrianglesAndAddToVirtualScene()
     GLenum       rendering_mode; // Modo de rasterização (GL_TRIANGLES, GL_TRIANGLE_STRIP, etc.)
     GLuint       vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
+    glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
+    glm::vec3    bbox_max;
 };
+
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
 
@@ -194,6 +214,11 @@ GLint object_id_uniform;
 GLint lightsOn_uniform;
 GLint view_vector_uniform;
 
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEIS DO BOTAO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+GLint interruptor_uniform;
+int interruptor=1;
+bool teste_interruptor=false;
+
 int lightsOn;
 
 bool wPressed = false;
@@ -209,6 +234,7 @@ float g_FreeCamz = 4.0f;
 
 int main(int argc, char* argv[])
 {
+    interruptor=1;
     lightsOn=1;
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
@@ -281,6 +307,11 @@ int main(int argc, char* argv[])
     //
     LoadShadersFromFiles();
 
+    // Carregamos duas imagens para serem utilizadas como textura
+    LoadTextureImage("../../data/brick_wall.jpg");      // TextureImage0
+    //LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
+
+
     // Construímos a representação de objetos geométricos através de malhas de triângulos
     ObjModel spheremodel("../../data/sphere.obj");
     ComputeNormals(&spheremodel);
@@ -293,6 +324,7 @@ int main(int argc, char* argv[])
     ObjModel planemodel("../../data/plane.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
+
 
 
     if ( argc > 1 )
@@ -428,7 +460,7 @@ int main(int argc, char* argv[])
         // Note que, no sistema de coordenadas da câmera, os planos near e far
         // estão no sentido negativo! Veja slides 190-193 do documento "Aula_09_Projecoes.pdf".
         float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -15.0f; // Posição do "far plane"
+        float farplane  = -50.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -453,13 +485,55 @@ int main(int argc, char* argv[])
 
         glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
 
+
+
+
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!TESTES DO BOTAO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        if(teste_interruptor){
+            //variavel é true quando usuario solta botao direito
+            teste_interruptor = false;
+            //vetor ray_direction (sentido da camera)
+            float norma_camera = sqrt( x*x + y*y + z*z );
+            glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
+
+            // coordenadas minimas e máximas da esfera
+            glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
+            glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+
+            // transformações da esfera
+            glm::mat4 model_esfera = Matrix_Translate(-1.0f,0.0f,0.0f);
+
+            float intersection_distance;
+            //testa se tocou o botão
+            if(TestRayOBBIntersection(
+                glm::vec3(g_FreeCamX,g_FreeCamy,g_FreeCamz),  // Ray origin = posição da câmera
+                ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                model_esfera,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+            )){
+                printf("\nlol");
+
+                if(interruptor==0)
+                    interruptor=1;
+                else interruptor=0;
+
+                //glUniform1i(interruptor_uniform,interruptor);
+
+            }
+        }
+
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
+        glUniform1i(interruptor_uniform,interruptor);
         glUniform1i(lightsOn_uniform,lightsOn);
         glUniformMatrix4fv(view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
         glUniform4fv(view_vector_uniform, 1, glm::value_ptr(camera_view_vector));
+
 
 
         /// desenho da cena
@@ -469,7 +543,6 @@ int main(int argc, char* argv[])
             glUniform1i(object_id_uniform, sceneVector[i].nameId);
             DrawVirtualObject(sceneVector[i].name);
         }
-
 
 
         // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
@@ -578,6 +651,9 @@ void LoadShadersFromFiles()
     view_uniform            = glGetUniformLocation(program_id, "view"); // Variável da matriz "view" em shader_vertex.glsl
     projection_uniform      = glGetUniformLocation(program_id, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
     object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
+
+    lightsOn_uniform = glGetUniformLocation(program_id, "lightsOn");
+    interruptor_uniform = glGetUniformLocation(program_id, "interruptor");
 }
 
 // Função que pega a matriz M e guarda a mesma no topo da pilha
@@ -1007,6 +1083,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // Quando o usuário soltar o botão esquerdo do mouse, atualizamos a
         // variável abaixo para false.
         g_RightMouseButtonPressed = false;
+
+        //!!!!!!!!!!!!!!!!!!!!!!!!!TESTE INTERRUPTOR!!!!!!!!!!!!!!!!!!!!!
+        teste_interruptor = true;
     }
     if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
     {
@@ -1244,67 +1323,7 @@ void ErrorCallback(int error, const char* description)
     fprintf(stderr, "ERROR: GLFW: %s\n", description);
 }
 
-// Esta função recebe um vértice com coordenadas de modelo p_model e passa o
-// mesmo por todos os sistemas de coordenadas armazenados nas matrizes model,
-// view, e projection; e escreve na tela as matrizes e pontos resultantes
-// dessas transformações.
-void TextRendering_ShowModelViewProjection(
-    GLFWwindow* window,
-    glm::mat4 projection,
-    glm::mat4 view,
-    glm::mat4 model,
-    glm::vec4 p_model
-)
-{
-    if ( !g_ShowInfoText )
-        return;
 
-    glm::vec4 p_world = model*p_model;
-    glm::vec4 p_camera = view*p_world;
-    glm::vec4 p_clip = projection*p_camera;
-    glm::vec4 p_ndc = p_clip / p_clip.w;
-
-    float pad = TextRendering_LineHeight(window);
-
-    TextRendering_PrintString(window, " Model matrix             Model     In World Coords.", -1.0f, 1.0f-pad, 1.0f);
-    TextRendering_PrintMatrixVectorProduct(window, model, p_model, -1.0f, 1.0f-2*pad, 1.0f);
-
-    TextRendering_PrintString(window, "                                        |  ", -1.0f, 1.0f-6*pad, 1.0f);
-    TextRendering_PrintString(window, "                            .-----------'  ", -1.0f, 1.0f-7*pad, 1.0f);
-    TextRendering_PrintString(window, "                            V              ", -1.0f, 1.0f-8*pad, 1.0f);
-
-    TextRendering_PrintString(window, " View matrix              World     In Camera Coords.", -1.0f, 1.0f-9*pad, 1.0f);
-    TextRendering_PrintMatrixVectorProduct(window, view, p_world, -1.0f, 1.0f-10*pad, 1.0f);
-
-    TextRendering_PrintString(window, "                                        |  ", -1.0f, 1.0f-14*pad, 1.0f);
-    TextRendering_PrintString(window, "                            .-----------'  ", -1.0f, 1.0f-15*pad, 1.0f);
-    TextRendering_PrintString(window, "                            V              ", -1.0f, 1.0f-16*pad, 1.0f);
-
-    TextRendering_PrintString(window, " Projection matrix        Camera                    In NDC", -1.0f, 1.0f-17*pad, 1.0f);
-    TextRendering_PrintMatrixVectorProductDivW(window, projection, p_camera, -1.0f, 1.0f-18*pad, 1.0f);
-
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-
-    glm::vec2 a = glm::vec2(-1, -1);
-    glm::vec2 b = glm::vec2(+1, +1);
-    glm::vec2 p = glm::vec2( 0,  0);
-    glm::vec2 q = glm::vec2(width, height);
-
-    glm::mat4 viewport_mapping = Matrix(
-                                     (q.x - p.x)/(b.x-a.x), 0.0f, 0.0f, (b.x*p.x - a.x*q.x)/(b.x-a.x),
-                                     0.0f, (q.y - p.y)/(b.y-a.y), 0.0f, (b.y*p.y - a.y*q.y)/(b.y-a.y),
-                                     0.0f, 0.0f, 1.0f, 0.0f,
-                                     0.0f, 0.0f, 0.0f, 1.0f
-                                 );
-
-    TextRendering_PrintString(window, "                                                       |  ", -1.0f, 1.0f-22*pad, 1.0f);
-    TextRendering_PrintString(window, "                            .--------------------------'  ", -1.0f, 1.0f-23*pad, 1.0f);
-    TextRendering_PrintString(window, "                            V                           ", -1.0f, 1.0f-24*pad, 1.0f);
-
-    TextRendering_PrintString(window, " Viewport matrix           NDC      In Pixel Coords.", -1.0f, 1.0f-25*pad, 1.0f);
-    TextRendering_PrintMatrixVectorProductMoreDigits(window, viewport_mapping, p_ndc, -1.0f, 1.0f-26*pad, 1.0f);
-}
 
 // Escrevemos na tela os ângulos de Euler definidos nas variáveis globais
 // g_AngleX, g_AngleY, e g_AngleZ.
@@ -1556,6 +1575,7 @@ void PrintObjModelInfo(ObjModel* model)
     }
 }
 
+
 void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
 
     struct sceneHelper Objeto;
@@ -1575,28 +1595,230 @@ void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
     sceneVector->push_back(Objeto);
 
 
-    Objeto.model = Matrix_Translate(0.0f,-1.0f,0.0f)
-                * Matrix_Scale(5.0f,1.0f,5.0f);
-    strcpy(Objeto.name, "plane");
-    Objeto.nameId = PLANE;
-    sceneVector->push_back(Objeto);
+     float comprimento_corredor = 20.0f;
+        //formato longo do corredor
+        Objeto.model = Matrix_Scale(5.0f,1.0f,comprimento_corredor);
+        strcpy(Objeto.name, "plane");
+        Objeto.nameId = PLANE;
+        PushMatrix(Objeto.model);
+            // CHÃO
+            Objeto.model =Matrix_Translate(0.0f,-1.0f,comprimento_corredor-5.0f)*Objeto.model;
 
-    Objeto.model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*Objeto.model;
-    sceneVector->push_back(Objeto);
+            sceneVector->push_back(Objeto);
+        PopMatrix(Objeto.model);
 
-    Objeto.model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*Objeto.model;
-    sceneVector->push_back(Objeto);
+        PushMatrix(Objeto.model);
+            //PAREDE À ESQUERDA DO COELHO
+            Objeto.model= Matrix_Translate(5.0f,4.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(1.5709)*Objeto.model;
 
-    Objeto.model=Matrix_Rotate_X(1.5709)*Matrix_Translate(0.0f,-3.5f,-3.5f)*Objeto.model;
-    sceneVector->push_back(Objeto);
+            sceneVector->push_back(Objeto);
+        PopMatrix(Objeto.model);
 
-    Objeto.model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*Objeto.model;
-    sceneVector->push_back(Objeto);
-    Objeto.model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*Objeto.model;
-    Objeto.model=Matrix_Rotate_Y(1.5709)*Matrix_Translate(0.0f,0.0f,0.0f)*Objeto.model;
-    sceneVector->push_back(Objeto);
+        PushMatrix(Objeto.model);
+            //PAREDE À DIREITA DO COELHO
+            Objeto.model= Matrix_Translate(-5.0f,4.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(-1.5709)*Objeto.model;
+
+            sceneVector->push_back(Objeto);
+        PopMatrix(Objeto.model);
+
+        PushMatrix(Objeto.model);
+            //TETO
+            Objeto.model= Matrix_Translate(0.0f,9.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(3.14159)*Objeto.model;
+
+            sceneVector->push_back(Objeto);
+        PopMatrix(Objeto.model);
+
+        //formato 10x10 das paredes do fim e início do corredor
+        Objeto.model = Matrix_Scale(5.0f,1.0f,5.0f);
+
+
+        PushMatrix(Objeto.model);
+            //PAREDE ATRÁS DO COELHO
+            Objeto.model= Matrix_Translate(0.0f,4.0f,-5.0f)*Matrix_Rotate_X(1.5709)*Objeto.model;
+
+            sceneVector->push_back(Objeto);
+        PopMatrix(Objeto.model);
+
+        PushMatrix(Objeto.model);
+            //PAREDE NO FIM DO CORREDOR
+            Objeto.model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*Objeto.model;
+
+            sceneVector->push_back(Objeto);
 }
 
+
+// testa a intersecção entre um raio e algum objeto
+bool TestRayOBBIntersection(
+	glm::vec3 ray_origin,        // Ray origin, in world space
+	glm::vec3 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+	glm::vec3 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+	glm::vec3 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+	glm::mat4 ModelMatrix,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+	float& intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+){
+    // tMin is the largest “near” intersection currently found;
+    // tMax is the smallest “far” intersection currently found.
+    // Delta is used to compute the intersections with the planes.
+    float tMin = 0.0f;
+    float tMax = 100000.0f;
+
+    //aparentemente o indice do vetor é algo como 0 = x, 1 = y, 2 = z, 3 = x,y e z
+    glm::vec3 OBBposition_worldspace(ModelMatrix[3].x, ModelMatrix[3].y, ModelMatrix[3].z);
+
+    glm::vec3 delta = OBBposition_worldspace - ray_origin;
+
+
+
+    {
+        //teste para o x
+        glm::vec3 xaxis(ModelMatrix[0].x, ModelMatrix[0].y, ModelMatrix[0].z);
+        float e = glm::dot(xaxis, delta);
+        float f = glm::dot(ray_direction, xaxis);
+        if ( fabs(f) > 0.001f )
+        {
+            float t1 = (e+aabb_min.x)/f; // Intersection with the "left" plane
+            float t2 = (e+aabb_max.x)/f; // Intersection with the "right" plane
+
+            if (t1>t2)
+            {
+                float w=t1;
+                t1=t2;
+                t2=w; // swap t1 and t2
+            }
+
+            if ( t2 < tMax )
+                tMax = t2; // tMax is the nearest "far" intersection amongst x planes
+
+            if ( t1 > tMin )
+                tMin = t1; // tMin is the farthest "near" intersection amongst x planes
+
+            if (tMax < tMin )
+                return false; // If "far" is closer than "near", then there is NO intersection.
+        }
+        else if(-e+aabb_min.x > 0.0f || -e+aabb_max.x < 0.0f)
+				return false;
+
+    }
+    {
+        //teste para o y
+        glm::vec3 yaxis(ModelMatrix[1].x, ModelMatrix[1].y, ModelMatrix[1].z);
+        float e = glm::dot(yaxis, delta);
+        float f = glm::dot(ray_direction, yaxis);
+
+        if ( fabs(f) > 0.001f )
+        {
+            float t1 = (e+aabb_min.y)/f; // Intersection with the "left" plane
+            float t2 = (e+aabb_max.y)/f; // Intersection with the "right" plane
+
+            if (t1>t2)
+            {
+                float w=t1;
+                t1=t2;
+                t2=w; // swap t1 and t2
+            }
+
+            if ( t2 < tMax )
+                tMax = t2; // tMax is the nearest "far" intersection amongst y planes
+
+            if ( t1 > tMin )
+                tMin = t1; // tMin is the farthest "near" intersection amongst y planes
+
+            if (tMax < tMin )
+                return false; // If "far" is closer than "near", then there is NO intersection.
+        }
+        else if(-e+aabb_min.y > 0.0f || -e+aabb_max.y < 0.0f)
+				return false;
+    }
+
+    {
+       //teste para o z
+        glm::vec3 zaxis(ModelMatrix[2].x, ModelMatrix[2].y, ModelMatrix[2].z);
+        float e = glm::dot(zaxis, delta);
+        float f = glm::dot(ray_direction, zaxis);
+
+        if ( fabs(f) > 0.001f )
+        {
+            float t1 = (e+aabb_min.z)/f; // Intersection with the "left" plane
+            float t2 = (e+aabb_max.z)/f; // Intersection with the "right" plane
+
+            if (t1>t2)
+                float w=t1;
+
+            if (t1>t2)
+            {
+                float w=t1;
+                t1=t2;
+                t2=w; // swap t1 and t2
+            }
+
+            if ( t2 < tMax )
+                tMax = t2; // tMax is the nearest "far" intersection amongst z planes
+
+            if ( t1 > tMin )
+                tMin = t1; // tMin is the farthest "near" intersection amongst z planes
+
+            if (tMax < tMin )
+                return false; // If "far" is closer than "near", then there is NO intersection.
+        }
+        else if(-e+aabb_min.z > 0.0f || -e+aabb_max.z < 0.0f)
+				return false;
+    }
+    intersection_distance = tMin;
+    return true;
+
+
+}
 // set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
 // vim: set spell spelllang=pt_br :
 
+// Função que carrega uma imagem para ser utilizada como textura
+void LoadTextureImage(const char* filename)
+{
+    printf("Carregando imagem \"%s\"... ", filename);
+
+    // Primeiro fazemos a leitura da imagem do disco
+    stbi_set_flip_vertically_on_load(true);
+    int width;
+    int height;
+    int channels;
+    unsigned char *data = stbi_load(filename, &width, &height, &channels, 3);
+
+    if ( data == NULL )
+    {
+        fprintf(stderr, "ERROR: Cannot open image file \"%s\".\n", filename);
+        std::exit(EXIT_FAILURE);
+    }
+
+    printf("OK (%dx%d).\n", width, height);
+
+    // Agora criamos objetos na GPU com OpenGL para armazenar a textura
+    GLuint texture_id;
+    GLuint sampler_id;
+    glGenTextures(1, &texture_id);
+    glGenSamplers(1, &sampler_id);
+
+    // Veja slide 100 do documento "Aula_20_e_21_Mapeamento_de_Texturas.pdf"
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Parâmetros de amostragem da textura. Falaremos sobre eles em uma próxima aula.
+    glSamplerParameteri(sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Agora enviamos a imagem lida do disco para a GPU
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+
+    GLuint textureunit = g_NumLoadedTextures;
+    glActiveTexture(GL_TEXTURE0 + textureunit);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindSampler(textureunit, sampler_id);
+
+    stbi_image_free(data);
+
+    g_NumLoadedTextures += 1;
+}
