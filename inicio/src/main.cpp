@@ -18,6 +18,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <windows.h>
+#include <mmsystem.h>
 
 // Headers abaixo são específicos de C++
 #include <map>
@@ -1806,8 +1808,15 @@ void lightSwitch(float x, float y, float z){
                 printf("\nlol");
 
                 if(interruptor==0)
+                {
                     interruptor=1;
-                else interruptor=0;
+                    PlaySoundA((LPCSTR) "..\\..\\data\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
+                }
+                else
+                {
+                    interruptor=0;
+                    PlaySoundA((LPCSTR) "..\\..\\data\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
+                }
 
                 //glUniform1i(interruptor_uniform,interruptor);
 
