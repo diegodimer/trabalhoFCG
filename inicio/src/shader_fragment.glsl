@@ -66,7 +66,7 @@ void main()
     // Vetor que define o sentido da câmera em relação ao ponto atual.
     vec4 spotlightv = normalize(camera_position - p);
 
-    vec4 l = normalize(camera_position - position_world);
+    vec4 l = normalize(vec4(0.3f,1.0f,0.5f,0.0f));
     vec4 v = normalize(camera_position - p);
 
     // spotlight
@@ -156,11 +156,11 @@ void main()
         {
 
             // Termo difuso utilizando a lei dos cossenos de Lambert
-            lambert_diffuse_term = Kd * I * max(0, dot(n,l)); // PREENCHA AQUI o termo difuso de Lambert
+            lambert_diffuse_term = Kd * I * max(0, dot(n,spotlightl)); // PREENCHA AQUI o termo difuso de Lambert
             // Termo ambiente
             ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
             // Termo especular utilizando o modelo de iluminação de Phong
-            phong_specular_term  = Ks*I*max(0,pow(dot(r,v), q)); // PREENCH AQUI o termo especular de Phong
+            phong_specular_term  = Ks*I*max(0,pow(dot(r,spotlightv), q)); // PREENCH AQUI o termo especular de Phong
             color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
         }
         else
@@ -190,7 +190,7 @@ void main()
         lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l));
         ambient_term = Ka*Iafundo;
         phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v), q));
-        color = (lambert_diffuse_term + ambient_term + phong_specular_term)*0.001;
+        color = (lambert_diffuse_term + ambient_term + phong_specular_term)*0.002;
     }
 
 

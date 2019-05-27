@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <windows.h>
 #include <mmsystem.h>
+#include <ctime>
 
 // Headers abaixo são específicos de C++
 #include <map>
@@ -139,7 +140,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void movimentacaoCamera();
 /* construtor de cena */
-void buildFirstScene(std::vector<struct sceneHelper>*  sceneVector);
+void buildFirstScene();
 void lightSwitch(float, float, float);
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
@@ -214,7 +215,8 @@ GLint view_uniform;
 GLint projection_uniform;
 GLint object_id_uniform;
 GLint lightsOn_uniform;
-
+// vetor da cena (com todos os elementos)
+std::vector<struct sceneHelper>  sceneVector;
 
 //!!!!!!!!!!!!!!!!!!!!! VARIAVEIS DO BOTAO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 GLint interruptor_uniform;
@@ -311,21 +313,21 @@ int main(int argc, char* argv[])
 
     // Carregamos duas imagens para serem utilizadas como textura
 
-    LoadTextureImage("../../data/bloody.png");      // TextureImage0
-    LoadTextureImage("../../data/brick_wall.jpg");      // TextureImage1
-    LoadTextureImage("../../data/wooden_floor.jpg");      // TextureImage2
+    LoadTextureImage("../../data/textures/bloody.png");      // TextureImage0
+    LoadTextureImage("../../data/textures/brick_wall.jpg");      // TextureImage1
+    LoadTextureImage("../../data/textures/wooden_floor.jpg");      // TextureImage2
 
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
-    ObjModel spheremodel("../../data/sphere.obj");
+    ObjModel spheremodel("../../data/obj/sphere.obj");
     ComputeNormals(&spheremodel);
     BuildTrianglesAndAddToVirtualScene(&spheremodel);
 
-    ObjModel bunnymodel("../../data/bunny.obj");
+    ObjModel bunnymodel("../../data/obj/bunny.obj");
     ComputeNormals(&bunnymodel);
     BuildTrianglesAndAddToVirtualScene(&bunnymodel);
 
-    ObjModel planemodel("../../data/plane.obj");
+    ObjModel planemodel("../../data/obj/plane.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
 
@@ -362,8 +364,7 @@ int main(int argc, char* argv[])
     #define TETO   4
 
 
-    // vector da cena
-    std::vector<struct sceneHelper>  sceneVector;
+
 
     int sceneNumber = 1;
 
@@ -376,7 +377,7 @@ int main(int argc, char* argv[])
             // limpa o vetor
           sceneVector.clear();
         // constrói o vetor de novo
-            buildFirstScene(&sceneVector);
+            buildFirstScene();
 
     }
         // Aqui executamos as operações de renderização
@@ -451,8 +452,9 @@ int main(int argc, char* argv[])
 
 
         /// desenho da cena
-        glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
+
         for(std::vector<int>::size_type i = 0; i != sceneVector.size(); i++) {
+            glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
             model = sceneVector[i].model;
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
             glUniform1i(object_id_uniform, sceneVector[i].nameId);
@@ -1491,14 +1493,14 @@ void PrintObjModelInfo(ObjModel* model)
 }
 
 
-void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
+void buildFirstScene(){
 
     struct sceneHelper Objeto;
 
     Objeto.model = Matrix_Translate(-1.0f,0.0f,0.0f);
     strcpy(Objeto.name,"sphere");
     Objeto.nameId = SPHERE;
-    sceneVector->push_back(Objeto);
+    sceneVector.push_back(Objeto);
 
 
     Objeto.model = Matrix_Translate(1.0f,0.0f,0.0f)
@@ -1507,7 +1509,7 @@ void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
                 * Matrix_Rotate_X(g_AngleX);
     strcpy(Objeto.name,"bunny");
     Objeto.nameId = BUNNY;
-    sceneVector->push_back(Objeto);
+    sceneVector.push_back(Objeto);
 
 
      float comprimento_corredor = 20.0f;
@@ -1519,7 +1521,7 @@ void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
         // CHÃO
         Objeto.model =Matrix_Translate(0.0f,-1.0f,comprimento_corredor-5.0f)*Objeto.model;
         Objeto.nameId = CHAO;
-        sceneVector->push_back(Objeto);
+        sceneVector.push_back(Objeto);
 
 
         PopMatrix(Objeto.model);
@@ -1527,7 +1529,7 @@ void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
             //TETO
         Objeto.model= Matrix_Translate(0.0f,9.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(3.14159)*Objeto.model;
         Objeto.nameId = TETO;
-        sceneVector->push_back(Objeto);
+        sceneVector.push_back(Objeto);
         PopMatrix(Objeto.model);
         PushMatrix(Objeto.model);
 
@@ -1537,7 +1539,7 @@ void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
             * Matrix_Rotate_Y(1.57)
             * Matrix_Rotate_X(1.57);
             Objeto.nameId = PLANE;
-            sceneVector->push_back(Objeto);
+            sceneVector.push_back(Objeto);
 
         PopMatrix(Objeto.model);
         PushMatrix(Objeto.model);
@@ -1547,7 +1549,7 @@ void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
             * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
             * Matrix_Rotate_Y(1.57)
             * Matrix_Rotate_X(4.71159);
-            sceneVector->push_back(Objeto);
+            sceneVector.push_back(Objeto);
 
         PopMatrix(Objeto.model);
         PopMatrix(Objeto.model);
@@ -1559,13 +1561,13 @@ void buildFirstScene(std::vector<struct sceneHelper>  *sceneVector){
 
         //parede atrás do coelho
         Objeto.model= Matrix_Translate(0.0f,4.0f,-5.0f)*Matrix_Rotate_X(1.5709)*Objeto.model;
-        sceneVector->push_back(Objeto);
+        sceneVector.push_back(Objeto);
 
         PopMatrix(Objeto.model);
         PushMatrix(Objeto.model);
 
         Objeto.model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*Objeto.model;
-        sceneVector->push_back(Objeto);
+        sceneVector.push_back(Objeto);
 
 
 }
@@ -1793,7 +1795,7 @@ void lightSwitch(float x, float y, float z){
             glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
 
             // transformações da esfera
-            glm::mat4 model_esfera = Matrix_Translate(-1.0f,0.0f,0.0f);
+            glm::mat4 target_model = sceneVector[1].model; // coelho
 
             float intersection_distance;
             //testa se tocou o botão
@@ -1802,7 +1804,7 @@ void lightSwitch(float x, float y, float z){
                 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
                 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
                 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
-                model_esfera,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
                 intersection_distance // Output : distance between ray_origin and the intersection with the OBB
             )){
                 printf("\nlol");
@@ -1810,12 +1812,15 @@ void lightSwitch(float x, float y, float z){
                 if(interruptor==0)
                 {
                     interruptor=1;
-                    PlaySoundA((LPCSTR) "..\\..\\data\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
+                    PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
+                    if(rand()%2 == 0)
+                        PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\ghast2.wav", NULL, SND_FILENAME | SND_ASYNC);
+
                 }
                 else
                 {
                     interruptor=0;
-                    PlaySoundA((LPCSTR) "..\\..\\data\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
+                    PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
                 }
 
                 //glUniform1i(interruptor_uniform,interruptor);
