@@ -16,7 +16,7 @@ uniform int lightsOn;
 uniform int interruptor;
 
 
-#define SPHERE 0
+#define ZOMBIE 0
 #define BUNNY  1
 #define PLANE  2
 #define CHAO   3
@@ -29,9 +29,10 @@ uniform vec4 bbox_max;
 
 
 // imagens de textura
-uniform sampler2D bloody;
-uniform sampler2D brick_wall;
-uniform sampler2D wooden_floor;
+uniform sampler2D TextureImage0;
+uniform sampler2D TextureImage1;
+uniform sampler2D TextureImage2;
+uniform sampler2D ZombieTex;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -84,13 +85,17 @@ void main()
     // cordenadas de textura
     float U=0,V=0;
 
-    if ( object_id == SPHERE )
+    if ( object_id == ZOMBIE )
     {
 
-        Kd = vec3( 0.8f, 0.4f, 0.08f);
+        U = texcoords.x;
+        V = texcoords.y;
+        // usa a ZombieTex carregada na main passada pelo loadshader
+        Kd = (texture(ZombieTex, vec2(U,V)).rgb);
         Ks = vec3(0.0,0.0,0.0);
-        Ka = Kd/2;
+        Ka = Kd;
         q = 1.0;
+
     }
     else if ( object_id == BUNNY )
     {
@@ -110,7 +115,7 @@ void main()
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
-        Kd = (texture(brick_wall, vec2(U,V)).rgb);
+        Kd = (texture(TextureImage1, vec2(U,V)).rgb);
         // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd;
@@ -122,7 +127,7 @@ void main()
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
-        Kd = (texture(wooden_floor, vec2(U,V)).rgb);
+        Kd = (texture(TextureImage0, vec2(U,V)).rgb);
         // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd;

@@ -32,6 +32,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <ctime>
 
 // Headers das bibliotecas OpenGL
 #include <glad/glad.h>   // Criação de contexto OpenGL 3.3
@@ -238,6 +239,8 @@ float g_FreeCamz = 4.0f;
 
 int main(int argc, char* argv[])
 {
+    // seed do random
+    srand(time(NULL));
     interruptor=1;
     lightsOn=1;
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
@@ -306,22 +309,25 @@ int main(int argc, char* argv[])
 
     printf("GPU: %s, %s, OpenGL %s, GLSL %s\n", vendor, renderer, glversion, glslversion);
 
-    // Carregamos os shaders de vértices e de fragmentos que serão utilizados
-    // para renderização. Veja slides 217-219 do documento "Aula_03_Rendering_Pipeline_Grafico.pdf".
-    //
-    LoadShadersFromFiles();
+
 
     // Carregamos duas imagens para serem utilizadas como textura
 
     LoadTextureImage("../../data/textures/bloody.png");      // TextureImage0
     LoadTextureImage("../../data/textures/brick_wall.jpg");      // TextureImage1
     LoadTextureImage("../../data/textures/wooden_floor.jpg");      // TextureImage2
+    // zombie texture
+    LoadTextureImage("../../data/textures/zombie.jpg");      // TextureImage2
 
+        // Carregamos os shaders de vértices e de fragmentos que serão utilizados
+    // para renderização. Veja slides 217-219 do documento "Aula_03_Rendering_Pipeline_Grafico.pdf".
+    //
+    LoadShadersFromFiles();
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
-    ObjModel spheremodel("../../data/obj/sphere.obj");
-    ComputeNormals(&spheremodel);
-    BuildTrianglesAndAddToVirtualScene(&spheremodel);
+    ObjModel zombiemodel("../../data/obj/zombie.obj");
+    ComputeNormals(&zombiemodel);
+    BuildTrianglesAndAddToVirtualScene(&zombiemodel);
 
     ObjModel bunnymodel("../../data/obj/bunny.obj");
     ComputeNormals(&bunnymodel);
@@ -357,7 +363,7 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
 
-    #define SPHERE 0
+    #define ZOMBIE 0
     #define BUNNY  1
     #define PLANE  2
     #define CHAO   3
@@ -568,10 +574,20 @@ void LoadShadersFromFiles()
     view_uniform            = glGetUniformLocation(program_id, "view"); // Variável da matriz "view" em shader_vertex.glsl
     projection_uniform      = glGetUniformLocation(program_id, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
     object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
+//    bbox_min_uniform        = glGetUniformLocation(program_id, "bbox_min");
+//    bbox_max_uniform        = glGetUniformLocation(program_id, "bbox_max");
 
     lightsOn_uniform = glGetUniformLocation(program_id, "lightsOn");
     interruptor_uniform = glGetUniformLocation(program_id, "interruptor");
+    // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
+    glUseProgram(program_id);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
+    glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
+    glUniform1i(glGetUniformLocation(program_id, "ZombieTex"), 3);
+    glUseProgram(0);
 }
+
 
 // Função que pega a matriz M e guarda a mesma no topo da pilha
 void PushMatrix(glm::mat4 M)
@@ -1497,12 +1513,14 @@ void buildFirstScene(){
 
     struct sceneHelper Objeto;
 
-    Objeto.model = Matrix_Translate(-1.0f,0.0f,0.0f);
-    strcpy(Objeto.name,"sphere");
-    Objeto.nameId = SPHERE;
+    // aqui é o desenho do zombie
+    Objeto.model = Matrix_Translate(-1.0f,1.5f,0.0f)
+                 * Matrix_Scale(3.0f,3.0f,3.0);
+    strcpy(Objeto.name,"zombie");
+    Objeto.nameId = ZOMBIE;
     sceneVector.push_back(Objeto);
 
-
+// desenho do coelho
     Objeto.model = Matrix_Translate(1.0f,0.0f,0.0f)
                 * Matrix_Rotate_Z(g_AngleZ)
                 * Matrix_Rotate_Y(g_AngleY)
@@ -1511,7 +1529,7 @@ void buildFirstScene(){
     Objeto.nameId = BUNNY;
     sceneVector.push_back(Objeto);
 
-
+// corredor
      float comprimento_corredor = 20.0f;
         //formato longo do corredor
         Objeto.model = Matrix_Scale(5.0f,1.0f,comprimento_corredor);
@@ -1795,7 +1813,7 @@ void lightSwitch(float x, float y, float z){
             glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
 
             // transformações da esfera
-            glm::mat4 target_model = sceneVector[1].model; // coelho
+            glm::mat4 target_model = sceneVector[1].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
 
             float intersection_distance;
             //testa se tocou o botão
@@ -1813,7 +1831,7 @@ void lightSwitch(float x, float y, float z){
                 {
                     interruptor=1;
                     PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
-                    if(rand()%2 == 0)
+                    if(rand()%20 == 0)
                         PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\ghast2.wav", NULL, SND_FILENAME | SND_ASYNC);
 
                 }
