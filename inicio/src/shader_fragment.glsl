@@ -14,7 +14,7 @@ uniform mat4 view;
 uniform mat4 projection;
 uniform int lightsOn;
 uniform int interruptor;
-
+uniform float timeCounter;
 
 #define ZOMBIE 0
 #define BUNNY  1
@@ -120,7 +120,7 @@ void main()
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
-        Kd = (texture(BrickTex, vec2(U,V)).rgb);
+        Kd = (texture(WoodTex, vec2(U,V)).rgb);
         // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd;
@@ -133,6 +133,7 @@ void main()
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
         Kd = (texture(BloodyTex, vec2(U,V)).rgb);
+        Kd *=0.2f;
         // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd;
@@ -154,7 +155,7 @@ void main()
 
 
     // Espectro da fonte de iluminação
-    vec3 I = vec3(1.0f,1.0f,1.0f); //  espectro da fonte de luz
+    vec3 I = vec3(0.3f,0.3f,0.3f); //  espectro da fonte de luz
     vec3 Ifundo = vec3(0.03f, 0.03f, 0.03f);
     // Espectro da luz ambiente
     vec3 Ia = vec3(0.2f,0.2f,0.2f); //  espectro da luz ambiente

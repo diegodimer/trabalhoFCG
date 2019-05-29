@@ -1536,13 +1536,23 @@ void buildFirstScene(){
     sceneVector.push_back(Objeto);
 
 // desenho do sofa
-    Objeto.model = Matrix_Scale(0.2f, 0.2f, 0.2f)
-                * Matrix_Translate(1.0f,0,0.0f)
-                * Matrix_Rotate_Y(1.57);
+    Objeto.model = Matrix_Scale(0.025f, 0.025f, 0.025f)
+                * Matrix_Translate(-147.50f, -41.0f, 50.0f)
+                * Matrix_Rotate_Y(1.57)
+                * Matrix_Rotate_X(-1.57);
     strcpy(Objeto.name,"sofa");
     Objeto.nameId = SOFA;
     sceneVector.push_back(Objeto);
 
+
+// desenho do sofa
+    Objeto.model = Matrix_Scale(0.025f, 0.025f, 0.025f)
+                * Matrix_Translate(-147.50f, -41.0f, 650.0f)
+                * Matrix_Rotate_Y(1.57)
+                * Matrix_Rotate_X(-1.57);
+    strcpy(Objeto.name,"sofa");
+    Objeto.nameId = SOFA;
+    sceneVector.push_back(Objeto);
 
 // desenho do interruptor de luz. Se ligado é o switch_on, senão o off.
     if(interruptor){
@@ -1844,7 +1854,7 @@ void lightSwitch(float x, float y, float z){
             glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
 
             // transformações da esfera
-            glm::mat4 target_model = sceneVector[2].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+            glm::mat4 target_model = sceneVector[3].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
 
             float intersection_distance;
             //testa se tocou o botão
