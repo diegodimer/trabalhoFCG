@@ -21,6 +21,8 @@ uniform int interruptor;
 #define PLANE  2
 #define CHAO   3
 #define TETO   4
+#define SOFA   5
+#define SWITCH 6
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -29,10 +31,11 @@ uniform vec4 bbox_max;
 
 
 // imagens de textura
-uniform sampler2D TextureImage0;
-uniform sampler2D TextureImage1;
-uniform sampler2D TextureImage2;
+uniform sampler2D BloodyTex;
+uniform sampler2D BrickTex;
+uniform sampler2D WoodTex;
 uniform sampler2D ZombieTex;
+uniform sampler2D FabricTex;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -97,15 +100,17 @@ void main()
         q = 1.0;
 
     }
-    else if ( object_id == BUNNY )
+    else if ( object_id == SOFA )
     {
         // PREENCHA AQUI
         // Propriedades espectrais do coelho
-
-        Kd = vec3(0.08f, 0.4f, 0.8f);
-        Ks = vec3 (0.8f, 0.8f, 0.8f);
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(FabricTex, vec2(U,V)).rgb);
+        Ks = vec3 (0, 0, 0);
         Ka = Kd/2;
-        q = 32.0f;
+        q = 1.0f;
 
 
     }
@@ -115,7 +120,7 @@ void main()
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
-        Kd = (texture(TextureImage1, vec2(U,V)).rgb);
+        Kd = (texture(BrickTex, vec2(U,V)).rgb);
         // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd;
@@ -127,11 +132,17 @@ void main()
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
-        Kd = (texture(TextureImage0, vec2(U,V)).rgb);
+        Kd = (texture(BloodyTex, vec2(U,V)).rgb);
         // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd;
         q = 1.0f;
+    }
+    else if(object_id == SWITCH){
+        Kd = vec3(0.95f,0.89f,0.4f);
+        Ks = vec3(0.05,0.01,0.005);
+        Ka = Kd/2;
+        q = 0;
     }
     else // Objeto desconhecido = preto
     {
@@ -156,7 +167,7 @@ void main()
 
     if(lightsOn == 0) // lanterna ligada (luzes desligadas)
     {
-        float fatt = pow(dot(normalize(p - spotlightPosition), spotlightDirection), 50.12); // função de atenuação
+        float fatt = pow(dot(normalize(p - spotlightPosition), spotlightDirection), 80.12); // função de atenuação
         if( dot(normalize(p - spotlightPosition), spotlightDirection) > cos(spotlightOpening)) // se tá sendo iluminado pela spotlight
         {
 

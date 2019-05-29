@@ -317,7 +317,8 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/textures/brick_wall.jpg");      // TextureImage1
     LoadTextureImage("../../data/textures/wooden_floor.jpg");      // TextureImage2
     // zombie texture
-    LoadTextureImage("../../data/textures/zombie.jpg");      // TextureImage2
+    LoadTextureImage("../../data/textures/zombie.jpg");      // textura do zombie
+    LoadTextureImage("../../data/textures/fabric.jpg");      // textura do sofá
 
         // Carregamos os shaders de vértices e de fragmentos que serão utilizados
     // para renderização. Veja slides 217-219 do documento "Aula_03_Rendering_Pipeline_Grafico.pdf".
@@ -336,6 +337,18 @@ int main(int argc, char* argv[])
     ObjModel planemodel("../../data/obj/plane.obj");
     ComputeNormals(&planemodel);
     BuildTrianglesAndAddToVirtualScene(&planemodel);
+
+    ObjModel sofamodel("../../data/obj/sofa.obj");
+    ComputeNormals(&sofamodel);
+    BuildTrianglesAndAddToVirtualScene(&sofamodel);
+
+    ObjModel switch_onmodel("../../data/obj/switch_on.obj");
+    ComputeNormals(&switch_onmodel);
+    BuildTrianglesAndAddToVirtualScene(&switch_onmodel);
+
+    ObjModel switch_offmodel("../../data/obj/switch_off.obj");
+    ComputeNormals(&switch_offmodel);
+    BuildTrianglesAndAddToVirtualScene(&switch_offmodel);
 
 
 
@@ -368,7 +381,8 @@ int main(int argc, char* argv[])
     #define PLANE  2
     #define CHAO   3
     #define TETO   4
-
+    #define SOFA   5
+    #define SWITCH 6
 
 
 
@@ -581,10 +595,11 @@ void LoadShadersFromFiles()
     interruptor_uniform = glGetUniformLocation(program_id, "interruptor");
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
     glUseProgram(program_id);
-    glUniform1i(glGetUniformLocation(program_id, "TextureImage0"), 0);
-    glUniform1i(glGetUniformLocation(program_id, "TextureImage1"), 1);
-    glUniform1i(glGetUniformLocation(program_id, "TextureImage2"), 2);
+    glUniform1i(glGetUniformLocation(program_id, "BloodyTex"), 0);
+    glUniform1i(glGetUniformLocation(program_id, "BrickTex"), 1);
+    glUniform1i(glGetUniformLocation(program_id, "WoodTex"), 2);
     glUniform1i(glGetUniformLocation(program_id, "ZombieTex"), 3);
+    glUniform1i(glGetUniformLocation(program_id, "FabricTex"), 4);
     glUseProgram(0);
 }
 
@@ -1187,7 +1202,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     //   Se apertar tecla Z       então g_AngleZ += delta;
     //   Se apertar tecla shift+Z então g_AngleZ -= delta;
 
-    float delta = 3.141592 / 16; // 22.5 graus, em radianos.
+    float delta = 0.5f; // 22.5 graus, em radianos.
 
     if (key == GLFW_KEY_X && action == GLFW_PRESS)
     {
@@ -1520,14 +1535,30 @@ void buildFirstScene(){
     Objeto.nameId = ZOMBIE;
     sceneVector.push_back(Objeto);
 
-// desenho do coelho
-    Objeto.model = Matrix_Translate(1.0f,0.0f,0.0f)
-                * Matrix_Rotate_Z(g_AngleZ)
-                * Matrix_Rotate_Y(g_AngleY)
-                * Matrix_Rotate_X(g_AngleX);
-    strcpy(Objeto.name,"bunny");
-    Objeto.nameId = BUNNY;
+// desenho do sofa
+    Objeto.model = Matrix_Scale(0.2f, 0.2f, 0.2f)
+                * Matrix_Translate(1.0f,0,0.0f)
+                * Matrix_Rotate_Y(1.57);
+    strcpy(Objeto.name,"sofa");
+    Objeto.nameId = SOFA;
     sceneVector.push_back(Objeto);
+
+
+// desenho do interruptor de luz. Se ligado é o switch_on, senão o off.
+    if(interruptor){
+
+        Objeto.model = Matrix_Translate(-5.0f,1.5f,33.0f)
+                * Matrix_Rotate_Y(1.57);
+        strcpy(Objeto.name,"switch_on");
+        Objeto.nameId = SWITCH;
+        sceneVector.push_back(Objeto);
+    }else {
+        Objeto.model =Matrix_Translate(-5.0f,1.5f,33.0f)
+                * Matrix_Rotate_Y(1.57);
+        strcpy(Objeto.name,"switch_off");
+        Objeto.nameId = SWITCH;
+        sceneVector.push_back(Objeto);
+    }
 
 // corredor
      float comprimento_corredor = 20.0f;
@@ -1813,7 +1844,7 @@ void lightSwitch(float x, float y, float z){
             glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
 
             // transformações da esfera
-            glm::mat4 target_model = sceneVector[1].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+            glm::mat4 target_model = sceneVector[2].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
 
             float intersection_distance;
             //testa se tocou o botão
