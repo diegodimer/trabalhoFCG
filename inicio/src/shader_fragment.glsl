@@ -98,15 +98,15 @@ void main()
         // usa a ZombieTex carregada na main passada pelo loadshader
         Kd = (texture(ZombieTex, vec2(U,V)).rgb);
         Ks = vec3(0.0,0.0,0.0);
-        Ka = Kd;
+        Ka = Kd/2;
         q = 1.0;
 
     }
        else if ( object_id == DOOR )
     {
-        Kd = vec3(0.95f,0.89f,0.4f);
-        Ks = vec3(0.05,0.01,0.005);
-        Ka = Kd/2;
+        Kd = vec3(0.14f,0.08f,0.01f);
+        Ks = vec3(0.0,0.0,0.0);
+        Ka = Kd;
         q = 1.0f;
     }
     else if ( object_id == SOFA )

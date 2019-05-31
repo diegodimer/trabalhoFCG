@@ -1544,8 +1544,8 @@ void buildFirstScene(){
     sceneVector.push_back(Objeto);
 
  //desenho da porta
-    Objeto.model = Matrix_Translate(-5.0f,4.0f,20.0f)
-                 * Matrix_Scale(0.02f,0.05f,0.05f)
+    Objeto.model = Matrix_Translate(-5.0f,2.75f,24.0f)
+                 * Matrix_Scale(0.02f,0.035f,0.05f)
                  * Matrix_Rotate_Y(1.57)
                  * Matrix_Rotate_X(-1.57);
         strcpy(Objeto.name,"door");
