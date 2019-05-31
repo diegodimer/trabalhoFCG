@@ -23,6 +23,7 @@ uniform float timeCounter;
 #define TETO   4
 #define SOFA   5
 #define SWITCH 6
+#define DOOR   7
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -36,6 +37,7 @@ uniform sampler2D BrickTex;
 uniform sampler2D WoodTex;
 uniform sampler2D ZombieTex;
 uniform sampler2D FabricTex;
+//uniform sampler2D DoorTex;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -100,6 +102,13 @@ void main()
         q = 1.0;
 
     }
+       else if ( object_id == DOOR )
+    {
+        Kd = vec3(0.95f,0.89f,0.4f);
+        Ks = vec3(0.05,0.01,0.005);
+        Ka = Kd/2;
+        q = 1.0f;
+    }
     else if ( object_id == SOFA )
     {
         // PREENCHA AQUI
@@ -114,6 +123,7 @@ void main()
 
 
     }
+
     else if ( object_id == PLANE )
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.

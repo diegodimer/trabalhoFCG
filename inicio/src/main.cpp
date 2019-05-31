@@ -143,6 +143,7 @@ void movimentacaoCamera();
 /* construtor de cena */
 void buildFirstScene();
 void lightSwitch(float, float, float);
+
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
 
@@ -223,6 +224,8 @@ std::vector<struct sceneHelper>  sceneVector;
 GLint interruptor_uniform;
 int interruptor=1;
 bool teste_interruptor=false;
+
+
 
 int lightsOn;
 
@@ -350,6 +353,10 @@ int main(int argc, char* argv[])
     ComputeNormals(&switch_offmodel);
     BuildTrianglesAndAddToVirtualScene(&switch_offmodel);
 
+    ObjModel doormodel("../../data/obj/door.obj");
+    ComputeNormals(&doormodel);
+    BuildTrianglesAndAddToVirtualScene(&doormodel);
+
 
 
     if ( argc > 1 )
@@ -383,6 +390,7 @@ int main(int argc, char* argv[])
     #define TETO   4
     #define SOFA   5
     #define SWITCH 6
+    #define DOOR   7
 
 
 
@@ -1535,6 +1543,15 @@ void buildFirstScene(){
     Objeto.nameId = ZOMBIE;
     sceneVector.push_back(Objeto);
 
+ //desenho da porta
+    Objeto.model = Matrix_Translate(-5.0f,4.0f,20.0f)
+                 * Matrix_Scale(0.02f,0.05f,0.05f)
+                 * Matrix_Rotate_Y(1.57)
+                 * Matrix_Rotate_X(-1.57);
+        strcpy(Objeto.name,"door");
+        Objeto.nameId = DOOR;
+        sceneVector.push_back(Objeto);
+
 // desenho do sofa
     Objeto.model = Matrix_Scale(0.025f, 0.025f, 0.025f)
                 * Matrix_Translate(-147.50f, -41.0f, 50.0f)
@@ -1627,6 +1644,7 @@ void buildFirstScene(){
 
         Objeto.model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*Objeto.model;
         sceneVector.push_back(Objeto);
+
 
 
 }
@@ -1854,7 +1872,7 @@ void lightSwitch(float x, float y, float z){
             glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
 
             // transformações da esfera
-            glm::mat4 target_model = sceneVector[3].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+            glm::mat4 target_model = sceneVector[4].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
 
             float intersection_distance;
             //testa se tocou o botão
@@ -1868,7 +1886,7 @@ void lightSwitch(float x, float y, float z){
             )){
                 printf("\nlol");
 
-                if(interruptor==0)
+                if(interruptor==0&&intersection_distance<=3.5f)
                 {
                     interruptor=1;
                     PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
@@ -1876,7 +1894,7 @@ void lightSwitch(float x, float y, float z){
                         PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\ghast2.wav", NULL, SND_FILENAME | SND_ASYNC);
 
                 }
-                else
+                else if (intersection_distance<=3.5f)
                 {
                     interruptor=0;
                     PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
