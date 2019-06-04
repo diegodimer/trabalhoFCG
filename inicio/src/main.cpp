@@ -80,7 +80,8 @@ struct ObjModel
 };
 
 
-struct sceneHelper{
+struct sceneHelper
+{
     glm::mat4 model;
     char name[100];
     int nameId;
@@ -104,12 +105,12 @@ void PrintObjModelInfo(ObjModel*); // Função para debugging
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!DECLARAÇÃO DA INTERSEÇÃO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 bool TestRayOBBIntersection(
-	glm::vec3 ray_origin,        // Ray origin, in world space
-	glm::vec3 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
-	glm::vec3 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
-	glm::vec3 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
-	glm::mat4 ModelMatrix,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
-	float& intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+    glm::vec3 ray_origin,        // Ray origin, in world space
+    glm::vec3 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+    glm::vec3 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+    glm::vec3 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+    glm::mat4 ModelMatrix,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+    float& intersection_distance // Output : distance between ray_origin and the intersection with the OBB
 );
 
 // Declaração de funções auxiliares para renderizar texto dentro da janela
@@ -139,7 +140,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-void movimentacaoCamera();
+void movimentacaoCamera(glm::vec4*);
 /* construtor de cena */
 void buildFirstScene();
 void lightSwitch(float, float, float);
@@ -235,9 +236,7 @@ bool sPressed = false;
 bool dPressed = false;
 bool altPress = false;
 
-float g_FreeCamX = 0.0f;
-float g_FreeCamy = 1.5f;
-float g_FreeCamz = 4.0f;
+glm::vec4 camera_position_c;
 
 
 int main(int argc, char* argv[])
@@ -323,7 +322,7 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/textures/zombie.jpg");      // textura do zombie
     LoadTextureImage("../../data/textures/fabric.jpg");      // textura do sofá
 
-        // Carregamos os shaders de vértices e de fragmentos que serão utilizados
+    // Carregamos os shaders de vértices e de fragmentos que serão utilizados
     // para renderização. Veja slides 217-219 do documento "Aula_03_Rendering_Pipeline_Grafico.pdf".
     //
     LoadShadersFromFiles();
@@ -383,35 +382,41 @@ int main(int argc, char* argv[])
     glm::mat4 the_view;
 
 
-    #define ZOMBIE 0
-    #define BUNNY  1
-    #define PLANE  2
-    #define CHAO   3
-    #define TETO   4
-    #define SOFA   5
-    #define SWITCH 6
-    #define DOOR   7
+#define ZOMBIE 0
+#define BUNNY  1
+#define PLANE  2
+#define CHAO   3
+#define TETO   4
+#define SOFA   5
+#define SWITCH 6
+#define DOOR   7
 
 
 
     int sceneNumber = 1;
+    double tAnterior = glfwGetTime();
+    double tAgora;
+    float deltaT;
+    glm::vec4 cameraMov;
+    camera_position_c = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
     {
         // constrói primeira cena (aqui se vir mais cenas fazemos aqui mesmo)
         // precisa que esse vetor seja reconstruído varias vezes por causa da interação, tipo o movimento do coelho
-       if (sceneNumber == 1  ){
+        if (sceneNumber == 1  )
+        {
             // limpa o vetor
-          sceneVector.clear();
-        // constrói o vetor de novo
+            sceneVector.clear();
+            // constrói o vetor de novo
             buildFirstScene();
 
-    }
+        }
         // Aqui executamos as operações de renderização
 
 
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         // "Pintamos" todos os pixels do framebuffer com a cor definida acima,
         // e também resetamos todos os pixels do Z-buffer (depth buffer).
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -419,8 +424,12 @@ int main(int argc, char* argv[])
         // os shaders de vértice e fragmentos).
         glUseProgram(program_id);
 
+        tAgora = glfwGetTime();
+        deltaT = tAgora - tAnterior;
+        deltaT*=180.0f;
 
-        movimentacaoCamera();
+
+        movimentacaoCamera(&cameraMov);
         // Computamos a posição da câmera utilizando coordenadas esféricas.  As
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
@@ -430,8 +439,10 @@ int main(int argc, char* argv[])
         float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
         float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
+        tAnterior = tAgora;
+
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
-        glm::vec4 camera_position_c  = glm::vec4(g_FreeCamX, g_FreeCamy, g_FreeCamz, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+        camera_position_c  = camera_position_c + (cameraMov * deltaT); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
         //glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
         glm::vec4 camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
         glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
@@ -481,7 +492,8 @@ int main(int argc, char* argv[])
 
         /// desenho da cena
 
-        for(std::vector<int>::size_type i = 0; i != sceneVector.size(); i++) {
+        for(std::vector<int>::size_type i = 0; i != sceneVector.size(); i++)
+        {
             glm::mat4 model = Matrix_Identity(); // Transformação identidade de modelagem
             model = sceneVector[i].model;
             glUniformMatrix4fv(model_uniform, 1, GL_FALSE, glm::value_ptr(model));
@@ -489,7 +501,9 @@ int main(int argc, char* argv[])
             DrawVirtualObject(sceneVector[i].name);
         }
 
+        //std::string ab = "Voce ligou a luz";
 
+        //TextRendering_PrintString(window, ab, (float)(-1/20*ab.size()), 0.75f, 4.0f);
         // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
         // passamos por todos os sistemas de coordenadas armazenados nas
         // matrizes the_model, the_view, e the_projection; e escrevemos na tela
@@ -1347,6 +1361,8 @@ void TextRendering_ShowFramesPerSecond(GLFWwindow* window)
     TextRendering_PrintString(window, buffer, 1.0f-(numchars + 1)*charwidth, 1.0f-lineheight, 1.0f);
 }
 
+
+
 // Função para debugging: imprime no terminal todas informações de um modelo
 // geométrico carregado de um arquivo ".obj".
 // Veja: https://github.com/syoyo/tinyobjloader/blob/22883def8db9ef1f3ffb9b404318e7dd25fdbb51/loader_example.cc#L98
@@ -1532,31 +1548,32 @@ void PrintObjModelInfo(ObjModel* model)
 }
 
 
-void buildFirstScene(){
+void buildFirstScene()
+{
 
     struct sceneHelper Objeto;
 
     // aqui é o desenho do zombie
     Objeto.model = Matrix_Translate(-1.0f,1.5f,0.0f)
-                 * Matrix_Scale(3.0f,3.0f,3.0);
+                   * Matrix_Scale(3.0f,3.0f,3.0);
     strcpy(Objeto.name,"zombie");
     Objeto.nameId = ZOMBIE;
     sceneVector.push_back(Objeto);
 
- //desenho da porta
+//desenho da porta
     Objeto.model = Matrix_Translate(-5.0f,2.75f,24.0f)
-                 * Matrix_Scale(0.02f,0.035f,0.05f)
-                 * Matrix_Rotate_Y(1.57)
-                 * Matrix_Rotate_X(-1.57);
-        strcpy(Objeto.name,"door");
-        Objeto.nameId = DOOR;
-        sceneVector.push_back(Objeto);
+                   * Matrix_Scale(0.02f,0.035f,0.05f)
+                   * Matrix_Rotate_Y(1.57)
+                   * Matrix_Rotate_X(-1.57);
+    strcpy(Objeto.name,"door");
+    Objeto.nameId = DOOR;
+    sceneVector.push_back(Objeto);
 
 // desenho do sofa
     Objeto.model = Matrix_Scale(0.025f, 0.025f, 0.025f)
-                * Matrix_Translate(-147.50f, -41.0f, 50.0f)
-                * Matrix_Rotate_Y(1.57)
-                * Matrix_Rotate_X(-1.57);
+                   * Matrix_Translate(-147.50f, -41.0f, 50.0f)
+                   * Matrix_Rotate_Y(1.57)
+                   * Matrix_Rotate_X(-1.57);
     strcpy(Objeto.name,"sofa");
     Objeto.nameId = SOFA;
     sceneVector.push_back(Objeto);
@@ -1564,86 +1581,87 @@ void buildFirstScene(){
 
 // desenho do sofa
     Objeto.model = Matrix_Scale(0.025f, 0.025f, 0.025f)
-                * Matrix_Translate(-147.50f, -41.0f, 650.0f)
-                * Matrix_Rotate_Y(1.57)
-                * Matrix_Rotate_X(-1.57);
+                   * Matrix_Translate(-147.50f, -41.0f, 650.0f)
+                   * Matrix_Rotate_Y(1.57)
+                   * Matrix_Rotate_X(-1.57);
     strcpy(Objeto.name,"sofa");
     Objeto.nameId = SOFA;
     sceneVector.push_back(Objeto);
 
 // desenho do interruptor de luz. Se ligado é o switch_on, senão o off.
-    if(interruptor){
+    if(interruptor)
+    {
 
         Objeto.model = Matrix_Translate(-5.0f,1.5f,33.0f)
-                * Matrix_Rotate_Y(1.57);
+                       * Matrix_Rotate_Y(1.57);
         strcpy(Objeto.name,"switch_on");
         Objeto.nameId = SWITCH;
         sceneVector.push_back(Objeto);
-    }else {
+    }
+    else
+    {
         Objeto.model =Matrix_Translate(-5.0f,1.5f,33.0f)
-                * Matrix_Rotate_Y(1.57);
+                      * Matrix_Rotate_Y(1.57);
         strcpy(Objeto.name,"switch_off");
         Objeto.nameId = SWITCH;
         sceneVector.push_back(Objeto);
     }
-
-// corredor
-     float comprimento_corredor = 20.0f;
-        //formato longo do corredor
-        Objeto.model = Matrix_Scale(5.0f,1.0f,comprimento_corredor);
-        strcpy(Objeto.name, "plane");
-        Objeto.nameId = PLANE;
-        PushMatrix(Objeto.model);
-        // CHÃO
-        Objeto.model =Matrix_Translate(0.0f,-1.0f,comprimento_corredor-5.0f)*Objeto.model;
-        Objeto.nameId = CHAO;
-        sceneVector.push_back(Objeto);
+    float comprimento_corredor = 20.0f;
+    //formato longo do corredor
+    Objeto.model = Matrix_Scale(5.0f,1.0f,comprimento_corredor);
+    strcpy(Objeto.name, "plane");
+    Objeto.nameId = PLANE;
+    PushMatrix(Objeto.model);
+    // CHÃO
+    Objeto.model =Matrix_Translate(0.0f,-1.0f,comprimento_corredor-5.0f)*Objeto.model;
+    Objeto.nameId = CHAO;
+    sceneVector.push_back(Objeto);
 
 
-        PopMatrix(Objeto.model);
-        PushMatrix(Objeto.model);
-            //TETO
-        Objeto.model= Matrix_Translate(0.0f,9.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(3.14159)*Objeto.model;
-        Objeto.nameId = TETO;
-        sceneVector.push_back(Objeto);
-        PopMatrix(Objeto.model);
-        PushMatrix(Objeto.model);
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
+    //TETO
+    Objeto.model= Matrix_Translate(0.0f,9.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(3.14159)*Objeto.model;
+    Objeto.nameId = TETO;
+    sceneVector.push_back(Objeto);
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
 
-        //PAREDE À ESQUERDA DO COELHO
-        Objeto.model= Matrix_Translate(-5.0f,4.0f,comprimento_corredor-5.0f)
-            * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
-            * Matrix_Rotate_Y(1.57)
-            * Matrix_Rotate_X(1.57);
-            Objeto.nameId = PLANE;
-            sceneVector.push_back(Objeto);
+    //PAREDE À ESQUERDA DO COELHO
+    Objeto.model= Matrix_Translate(-5.0f,4.0f,comprimento_corredor-5.0f)
+                  * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
+                  * Matrix_Rotate_Y(1.57)
+                  * Matrix_Rotate_X(1.57);
+    Objeto.nameId = PLANE;
+    sceneVector.push_back(Objeto);
 
-        PopMatrix(Objeto.model);
-        PushMatrix(Objeto.model);
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
 
-        // parede a direita
-        Objeto.model= Matrix_Translate(5.0f,4.0f,comprimento_corredor-5.0f)
-            * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
-            * Matrix_Rotate_Y(1.57)
-            * Matrix_Rotate_X(4.71159);
-            sceneVector.push_back(Objeto);
+    // parede a direita
+    Objeto.model= Matrix_Translate(5.0f,4.0f,comprimento_corredor-5.0f)
+                  * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
+                  * Matrix_Rotate_Y(1.57)
+                  * Matrix_Rotate_X(4.71159);
+    sceneVector.push_back(Objeto);
 
-        PopMatrix(Objeto.model);
-        PopMatrix(Objeto.model);
+    PopMatrix(Objeto.model);
+    PopMatrix(Objeto.model);
 
 
-        // largura do corredor = 5
-        Objeto.model = Matrix_Scale(5.0f,1.0f,5.0f);
-        PushMatrix(Objeto.model);
+    // largura do corredor = 5
+    Objeto.model = Matrix_Scale(5.0f,1.0f,5.0f);
+    PushMatrix(Objeto.model);
 
-        //parede atrás do coelho
-        Objeto.model= Matrix_Translate(0.0f,4.0f,-5.0f)*Matrix_Rotate_X(1.5709)*Objeto.model;
-        sceneVector.push_back(Objeto);
+    //parede atrás do coelho
+    Objeto.model= Matrix_Translate(0.0f,4.0f,-5.0f)*Matrix_Rotate_X(1.5709)*Objeto.model;
+    sceneVector.push_back(Objeto);
 
-        PopMatrix(Objeto.model);
-        PushMatrix(Objeto.model);
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
 
-        Objeto.model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*Objeto.model;
-        sceneVector.push_back(Objeto);
+    Objeto.model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*Objeto.model;
+    sceneVector.push_back(Objeto);
 
 
 
@@ -1652,13 +1670,14 @@ void buildFirstScene(){
 
 // testa a intersecção entre um raio e algum objeto
 bool TestRayOBBIntersection(
-	glm::vec3 ray_origin,        // Ray origin, in world space
-	glm::vec3 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
-	glm::vec3 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
-	glm::vec3 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
-	glm::mat4 ModelMatrix,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
-	float& intersection_distance // Output : distance between ray_origin and the intersection with the OBB
-){
+    glm::vec3 ray_origin,        // Ray origin, in world space
+    glm::vec3 ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+    glm::vec3 aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+    glm::vec3 aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+    glm::mat4 ModelMatrix,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+    float& intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+)
+{
     // tMin is the largest “near” intersection currently found;
     // tMax is the smallest “far” intersection currently found.
     // Delta is used to compute the intersections with the planes.
@@ -1699,7 +1718,7 @@ bool TestRayOBBIntersection(
                 return false; // If "far" is closer than "near", then there is NO intersection.
         }
         else if(-e+aabb_min.x > 0.0f || -e+aabb_max.x < 0.0f)
-				return false;
+            return false;
 
     }
     {
@@ -1730,11 +1749,11 @@ bool TestRayOBBIntersection(
                 return false; // If "far" is closer than "near", then there is NO intersection.
         }
         else if(-e+aabb_min.y > 0.0f || -e+aabb_max.y < 0.0f)
-				return false;
+            return false;
     }
 
     {
-       //teste para o z
+        //teste para o z
         glm::vec3 zaxis(ModelMatrix[2].x, ModelMatrix[2].y, ModelMatrix[2].z);
         float e = glm::dot(zaxis, delta);
         float f = glm::dot(ray_direction, zaxis);
@@ -1764,7 +1783,7 @@ bool TestRayOBBIntersection(
                 return false; // If "far" is closer than "near", then there is NO intersection.
         }
         else if(-e+aabb_min.z > 0.0f || -e+aabb_max.z < 0.0f)
-				return false;
+            return false;
     }
     intersection_distance = tMin;
     return true;
@@ -1794,11 +1813,11 @@ void LoadTextureImage(const char* filename)
     glGenTextures(1, &texture_id);
     glGenSamplers(1, &sampler_id);
 
-    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glSamplerParameteri(sampler_id, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    glSamplerParameteri(sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glSamplerParameteri(sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //glSamplerParameteri(sampler_id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    //glSamplerParameteri(sampler_id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
@@ -1817,91 +1836,104 @@ void LoadTextureImage(const char* filename)
     numOfLoadedTextures += 1;
 }
 
-void movimentacaoCamera(){
-        /// ////////////////////////////////////////////////////////
-        // as teclas WASD são o que podem mudar o CENTRO da camera LIVRE
-        // ir na direção W ou S é aproximar da origem (centro da camera) ou afastar do centro da camera
-        // portanto, um delta de velocidade * a coordenada do centro da camera
-        if(sPressed)
-        {
-            g_FreeCamX += 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
-            // g_FreeCamy += 0.05f*sin(g_CameraPhi);
-            g_FreeCamz += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
-        };
-        if(wPressed)
-        {
-            g_FreeCamX -= 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
-            // g_FreeCamy -= 0.05f*sin(g_CameraPhi);
-            g_FreeCamz -= 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
-        };
-        // mexer para esquerda ou para direita é um deslocamento na direção do vetor u das coordenadas da CAMERA
-        // o vetor u é dado pelo produto vetorial (cross product) de -view com up_vector.
-        // o vetor view (como definido abaixo) é as coordenadas do centro da camera negadas, então:
-        // | -Cx |   | 0 |
-        // | -Cy | X | 1 |
-        // | -Cz |   | 0 |
-        // o que resulta em
-        // | -Cy*0 + Cz*1 |     | +Cz |
-        // | -Cz*0 + Cx*0 | ==  |  0  |
-        // | -Cx*1 + Cy*0 |     | -Cx |
-        // portanto, um deslocamento para esquerda seria somar um na coordenada X um +Cz, que é definido por
-        // cos(g_CameraPhi) * sin (g_CameraTheta) e na coordenada Z um -Cx, definido por cos(cameraPhi)*sin(cameraTheta)
-        // multiplicado por um deslocamento determinando a "velocidade"
-        if(dPressed)
-        {
-            g_FreeCamz -= 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
-            g_FreeCamX += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
-        };
-        if (aPressed)
-        {
-            g_FreeCamX -= 0.05*cos(g_CameraPhi) * cos(g_CameraTheta);
-            g_FreeCamz += 0.05*cos(g_CameraPhi) * sin(g_CameraTheta);
-        }
+void movimentacaoCamera(glm::vec4 *vec)
+{
+    float g_FreeCamX=0;
+    float g_FreeCamz=0;
+    /// ////////////////////////////////////////////////////////
+    // as teclas WASD são o que podem mudar o CENTRO da camera LIVRE
+    // ir na direção W ou S é aproximar da origem (centro da camera) ou afastar do centro da camera
+    // portanto, um delta de velocidade * a coordenada do centro da camera
+    if(sPressed)
+    {
+        g_FreeCamX += 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
+        // g_FreeCamy += 0.05f*sin(g_CameraPhi);
+        g_FreeCamz += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
+    }
+    if(wPressed)
+    {
+        g_FreeCamX += -0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
+        // g_FreeCamy -= 0.05f*sin(g_CameraPhi);
+        g_FreeCamz += -0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
+    }
+    // mexer para esquerda ou para direita é um deslocamento na direção do vetor u das coordenadas da CAMERA
+    // o vetor u é dado pelo produto vetorial (cross product) de -view com up_vector.
+    // o vetor view (como definido abaixo) é as coordenadas do centro da camera negadas, então:
+    // | -Cx |   | 0 |
+    // | -Cy | X | 1 |
+    // | -Cz |   | 0 |
+    // o que resulta em
+    // | -Cy*0 + Cz*1 |     | +Cz |
+    // | -Cz*0 + Cx*0 | ==  |  0  |
+    // | -Cx*1 + Cy*0 |     | -Cx |
+    // portanto, um deslocamento para esquerda seria somar um na coordenada X um +Cz, que é definido por
+    // cos(g_CameraPhi) * sin (g_CameraTheta) e na coordenada Z um -Cx, definido por cos(cameraPhi)*sin(cameraTheta)
+    // multiplicado por um deslocamento determinando a "velocidade"
+    if(dPressed)
+    {
+        g_FreeCamz += -0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
+        g_FreeCamX += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
+    }
+    if (aPressed)
+    {
+        g_FreeCamX += -0.05*cos(g_CameraPhi) * cos(g_CameraTheta);
+        g_FreeCamz += 0.05*cos(g_CameraPhi) * sin(g_CameraTheta);
+    }
+
+
+
+    vec->x = g_FreeCamX;
+    vec->y = 0;
+    vec->z = g_FreeCamz;
+    vec->w = 0.0f;
 }
 
-void lightSwitch(float x, float y, float z){
-    if(teste_interruptor){
-            //variavel é true quando usuario solta botao direito
-            teste_interruptor = false;
-            //vetor ray_direction (sentido da camera)
-            float norma_camera = sqrt( x*x + y*y + z*z );
-            glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
+void lightSwitch(float x, float y, float z)
+{
+    if(teste_interruptor)
+    {
+        //variavel é true quando usuario solta botao direito
+        teste_interruptor = false;
+        //vetor ray_direction (sentido da camera)
+        float norma_camera = sqrt( x*x + y*y + z*z );
+        glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
 
-            // coordenadas minimas e máximas da esfera
-            glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
-            glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+        // coordenadas minimas e máximas da esfera
+        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
+        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
 
-            // transformações da esfera
-            glm::mat4 target_model = sceneVector[4].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+        // transformações da esfera
+        glm::mat4 target_model = sceneVector[4].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
 
-            float intersection_distance;
-            //testa se tocou o botão
-            if(TestRayOBBIntersection(
-                glm::vec3(g_FreeCamX,g_FreeCamy,g_FreeCamz),  // Ray origin = posição da câmera
-                ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
-                aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
-                aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
-                target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
-                intersection_distance // Output : distance between ray_origin and the intersection with the OBB
-            )){
-                printf("\nlol");
+        float intersection_distance;
+        //testa se tocou o botão
+        if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+            printf("\nlol");
 
-                if(interruptor==0&&intersection_distance<=3.5f)
-                {
-                    interruptor=1;
-                    PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
-                    if(rand()%20 == 0)
-                        PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\ghast2.wav", NULL, SND_FILENAME | SND_ASYNC);
-
-                }
-                else if (intersection_distance<=3.5f)
-                {
-                    interruptor=0;
-                    PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
-                }
-
-                //glUniform1i(interruptor_uniform,interruptor);
+            if(interruptor==0&&intersection_distance<=3.5f)
+            {
+                interruptor=1;
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
+                if(rand()%20 == 0)
+                    PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\ghast2.wav", NULL, SND_FILENAME | SND_ASYNC);
 
             }
+            else if (intersection_distance<=3.5f)
+            {
+                interruptor=0;
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
+            }
+
+            //glUniform1i(interruptor_uniform,interruptor);
+
         }
+    }
 };

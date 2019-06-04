@@ -24,6 +24,7 @@ uniform float timeCounter;
 #define SOFA   5
 #define SWITCH 6
 #define DOOR   7
+
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -37,7 +38,6 @@ uniform sampler2D BrickTex;
 uniform sampler2D WoodTex;
 uniform sampler2D ZombieTex;
 uniform sampler2D FabricTex;
-//uniform sampler2D DoorTex;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -165,7 +165,7 @@ void main()
 
 
     // Espectro da fonte de iluminação
-    vec3 I = vec3(0.3f,0.3f,0.3f); //  espectro da fonte de luz
+    vec3 I = vec3(0.7f,0.7f,0.7f); //  espectro da fonte de luz
     vec3 Ifundo = vec3(0.03f, 0.03f, 0.03f);
     // Espectro da luz ambiente
     vec3 Ia = vec3(0.2f,0.2f,0.2f); //  espectro da luz ambiente
@@ -178,7 +178,7 @@ void main()
 
     if(lightsOn == 0) // lanterna ligada (luzes desligadas)
     {
-        float fatt = pow(dot(normalize(p - spotlightPosition), spotlightDirection), 80.12); // função de atenuação
+        float fatt = pow(dot(normalize(p - spotlightPosition), spotlightDirection), 35.12); // função de atenuação
         if( dot(normalize(p - spotlightPosition), spotlightDirection) > cos(spotlightOpening)) // se tá sendo iluminado pela spotlight
         {
 
