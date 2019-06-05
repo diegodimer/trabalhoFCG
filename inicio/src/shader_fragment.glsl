@@ -14,6 +14,7 @@ uniform mat4 view;
 uniform mat4 projection;
 uniform int lightsOn;
 uniform int interruptor;
+uniform int paper;
 uniform float timeCounter;
 
 #define ZOMBIE 0

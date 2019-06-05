@@ -226,6 +226,10 @@ GLint interruptor_uniform;
 int interruptor=1;
 bool teste_interruptor=false;
 
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEIS DO PAPEL!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+GLint paper_uniform;
+int paper=1;
+bool teste_paper=false;
 
 
 int lightsOn;
@@ -244,6 +248,7 @@ int main(int argc, char* argv[])
     // seed do random
     srand(time(NULL));
     interruptor=1;
+    paper=1;
     lightsOn=1;
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
@@ -496,6 +501,7 @@ int main(int argc, char* argv[])
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
         glUniform1i(interruptor_uniform,interruptor);
+        glUniform1i(paper_uniform,paper);
         glUniform1i(lightsOn_uniform,lightsOn);
         glUniformMatrix4fv(view_uniform, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projection_uniform, 1, GL_FALSE, glm::value_ptr(projection));
@@ -628,6 +634,7 @@ void LoadShadersFromFiles()
 
     lightsOn_uniform = glGetUniformLocation(program_id, "lightsOn");
     interruptor_uniform = glGetUniformLocation(program_id, "interruptor");
+    interruptor_uniform = glGetUniformLocation(program_id, "paper");
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
     glUseProgram(program_id);
     glUniform1i(glGetUniformLocation(program_id, "BloodyTex"), 0);
@@ -1071,6 +1078,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 
         //!!!!!!!!!!!!!!!!!!!!!!!!!TESTE INTERRUPTOR!!!!!!!!!!!!!!!!!!!!!
         teste_interruptor = true;
+        teste_paper = true;
     }
     if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
     {
@@ -1968,10 +1976,10 @@ void lightSwitch(float x, float y, float z)
 };
 
 void bolaPapel(float x, float y, float z)
-{    if(teste_interruptor)
+{    if(teste_paper)
     {
         //variavel é true quando usuario solta botao direito
-        teste_interruptor = false;
+        teste_paper = false;
         //vetor ray_direction (sentido da camera)
         float norma_camera = sqrt( x*x + y*y + z*z );
         glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
@@ -1981,7 +1989,7 @@ void bolaPapel(float x, float y, float z)
         glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
 
         // transformações da esfera
-        glm::mat4 target_model = sceneVector[4].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+        glm::mat4 target_model = Matrix_Translate(-4.0f,0.70f,8.50f); // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
 
         float intersection_distance;
         //testa se tocou o botão
@@ -1994,19 +2002,19 @@ void bolaPapel(float x, float y, float z)
                     intersection_distance // Output : distance between ray_origin and the intersection with the OBB
                 ))
         {
-            printf("\nAAAAAAAAAAAAAAAAAAAAAA");
+            printf("\nA bola foi clicada \n");
 
-            if(interruptor==0&&intersection_distance<=3.5f)
+            if(paper==0&&intersection_distance<=5.0f)
             {
-                interruptor=1;
+                paper=1;
                 PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
                 if(rand()%20 == 0)
                     PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\ghast2.wav", NULL, SND_FILENAME | SND_ASYNC);
 
             }
-            else if (intersection_distance<=3.5f)
+            else if (intersection_distance<=5.0f)
             {
-                interruptor=0;
+                paper=0;
                 PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
             }
 
