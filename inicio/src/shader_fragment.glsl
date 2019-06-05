@@ -24,6 +24,8 @@ uniform float timeCounter;
 #define SOFA   5
 #define SWITCH 6
 #define DOOR   7
+#define MESA   8
+#define BOLA   9
 
 uniform int object_id;
 
@@ -38,6 +40,8 @@ uniform sampler2D BrickTex;
 uniform sampler2D WoodTex;
 uniform sampler2D ZombieTex;
 uniform sampler2D FabricTex;
+uniform sampler2D MesaTex;
+uniform sampler2D BolaTex;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -127,8 +131,8 @@ void main()
     else if ( object_id == PLANE )
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
-        U = texcoords.x;
-        V = texcoords.y;
+        U = texcoords.x*2;
+        V = texcoords.y*2;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
         Kd = (texture(WoodTex, vec2(U,V)).rgb);
         // Equação de Iluminação
@@ -139,8 +143,8 @@ void main()
     else if ( object_id == CHAO || object_id == TETO )
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
-        U = texcoords.x;
-        V = texcoords.y;
+        U = texcoords.x*3;
+        V = texcoords.y*3;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
         Kd = (texture(BloodyTex, vec2(U,V)).rgb);
         Kd *=0.2f;
@@ -155,6 +159,29 @@ void main()
         Ka = Kd/2;
         q = 0;
     }
+    else if(object_id == MESA){
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(MesaTex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0.0,0.0,0.0);
+        Ka = Kd;
+        q = 1.0f;
+
+    }
+    else if(object_id == BOLA){
+                // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(BolaTex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0.0,0.0,0.0);
+        Ka = Kd;
+        q = 1.0f;
+    }
     else // Objeto desconhecido = preto
     {
         Kd = vec3(0,0,0);
@@ -165,7 +192,7 @@ void main()
 
 
     // Espectro da fonte de iluminação
-    vec3 I = vec3(0.7f,0.7f,0.7f); //  espectro da fonte de luz
+    vec3 I = vec3(1.0f,1.0f,1.0f ); //  espectro da fonte de luz
     vec3 Ifundo = vec3(0.03f, 0.03f, 0.03f);
     // Espectro da luz ambiente
     vec3 Ia = vec3(0.2f,0.2f,0.2f); //  espectro da luz ambiente

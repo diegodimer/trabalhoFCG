@@ -144,6 +144,7 @@ void movimentacaoCamera(glm::vec4*);
 /* construtor de cena */
 void buildFirstScene();
 void lightSwitch(float, float, float);
+void bolaPapel(float, float, float);
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
@@ -181,6 +182,12 @@ float g_AngleX = 0.0f;
 float g_AngleY = 0.0f;
 float g_AngleZ = 0.0f;
 
+//variáveis do corpo (pra gente usar em algo)
+float g_TorsoPositionX;
+float g_TorsoPositionY;
+float g_ForearmAngleX;
+float g_ForearmAngleZ;
+
 // "g_LeftMouseButtonPressed = true" se o usuário está com o botão esquerdo do mouse
 // pressionado no momento atual. Veja função MouseButtonCallback().
 bool g_LeftMouseButtonPressed = false;
@@ -195,13 +202,6 @@ float g_CameraTheta = 0.0f; // Ângulo no plano ZX em relação ao eixo Z
 float g_CameraPhi = 0.0f;   // Ângulo em relação ao eixo Y
 float g_CameraDistance = 3.5f; // Distância da câmera para a origem
 
-// Variáveis que controlam rotação do antebraço
-float g_ForearmAngleZ = 0.0f;
-float g_ForearmAngleX = 0.0f;
-
-// Variáveis que controlam translação do torso
-float g_TorsoPositionX = 0.0f;
-float g_TorsoPositionY = 0.0f;
 
 // Variável que controla o tipo de projeção utilizada: perspectiva ou ortográfica.
 bool g_UsePerspectiveProjection = true;
@@ -272,7 +272,7 @@ int main(int argc, char* argv[])
     // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 600, "INF01047 - Seu Cartao - Seu Nome", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "SCAPELAND", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -321,6 +321,8 @@ int main(int argc, char* argv[])
     // zombie texture
     LoadTextureImage("../../data/textures/zombie.jpg");      // textura do zombie
     LoadTextureImage("../../data/textures/fabric.jpg");      // textura do sofá
+    LoadTextureImage("../../data/textures/mesa.jpg");      // textura da mesa
+    LoadTextureImage("../../data/textures/bola.jpg");      // textura da bola de papel
 
     // Carregamos os shaders de vértices e de fragmentos que serão utilizados
     // para renderização. Veja slides 217-219 do documento "Aula_03_Rendering_Pipeline_Grafico.pdf".
@@ -331,10 +333,6 @@ int main(int argc, char* argv[])
     ObjModel zombiemodel("../../data/obj/zombie.obj");
     ComputeNormals(&zombiemodel);
     BuildTrianglesAndAddToVirtualScene(&zombiemodel);
-
-    ObjModel bunnymodel("../../data/obj/bunny.obj");
-    ComputeNormals(&bunnymodel);
-    BuildTrianglesAndAddToVirtualScene(&bunnymodel);
 
     ObjModel planemodel("../../data/obj/plane.obj");
     ComputeNormals(&planemodel);
@@ -356,6 +354,13 @@ int main(int argc, char* argv[])
     ComputeNormals(&doormodel);
     BuildTrianglesAndAddToVirtualScene(&doormodel);
 
+    ObjModel mesamodel("../../data/obj/mesa.obj");
+    ComputeNormals(&mesamodel);
+    BuildTrianglesAndAddToVirtualScene(&mesamodel);
+
+    ObjModel bolamodel("../../data/obj/bola.obj");
+    ComputeNormals(&bolamodel);
+    BuildTrianglesAndAddToVirtualScene(&bolamodel);
 
 
     if ( argc > 1 )
@@ -390,6 +395,8 @@ int main(int argc, char* argv[])
 #define SOFA   5
 #define SWITCH 6
 #define DOOR   7
+#define MESA   8
+#define BOLA   9
 
 
 
@@ -398,7 +405,7 @@ int main(int argc, char* argv[])
     double tAgora;
     float deltaT;
     glm::vec4 cameraMov;
-    camera_position_c = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    camera_position_c = glm::vec4(1.0f, 2.0f, 1.0f, 1.0f);
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
@@ -441,12 +448,6 @@ int main(int argc, char* argv[])
 
         tAnterior = tAgora;
 
-        // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
-        camera_position_c  = camera_position_c + (cameraMov * deltaT); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-        //glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-        glm::vec4 camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
-        glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
-        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
         // Agora computamos a matriz de Projeção.
         glm::mat4 projection;
@@ -456,29 +457,41 @@ int main(int argc, char* argv[])
         float nearplane = -0.1f;  // Posição do "near plane"
         float farplane  = -50.0f; // Posição do "far plane"
 
+        // Projeção Perspectiva.
+        // Para definição do field of view (FOV), veja slide 227 do documento "Aula_09_Projecoes.pdf".
+        float field_of_view = 3.141592 / 3.0f;
+        projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
+
+
+        glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+        glm::vec4 camera_view_vector;
+        glm::vec4 camera_lookat_l;
+
         if (g_UsePerspectiveProjection)
         {
-            // Projeção Perspectiva.
-            // Para definição do field of view (FOV), veja slide 227 do documento "Aula_09_Projecoes.pdf".
-            float field_of_view = 3.141592 / 3.0f;
-            projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
+            // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
+            camera_position_c  = camera_position_c + (cameraMov * deltaT); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            //glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
+
+
         }
         else
         {
-            // Projeção Ortográfica.
-            // Para definição dos valores l, r, b, t ("left", "right", "bottom", "top"),
-            // PARA PROJEÇÃO ORTOGRÁFICA veja slide 236 do documento "Aula_09_Projecoes.pdf".
-            // Para simular um "zoom" ortográfico, computamos o valor de "t"
-            // utilizando a variável g_CameraDistance.
-            float t = 1.5f*g_CameraDistance/2.5f;
-            float b = -t;
-            float r = t*g_ScreenRatio;
-            float l = -r;
-            projection = Matrix_Orthographic(l, r, b, t, nearplane, farplane);
+            // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
+            // Veja slides 172-182 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
+            camera_position_c  = glm::vec4(x,2.0f,z,1.0f); // Ponto "c", centro da câmera
+            camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
+
+
         }
 
-        lightSwitch(x,y,z);
+        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
+
+        lightSwitch(x,y,z);
+        bolaPapel(x,y,z);
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
@@ -622,6 +635,8 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "WoodTex"), 2);
     glUniform1i(glGetUniformLocation(program_id, "ZombieTex"), 3);
     glUniform1i(glGetUniformLocation(program_id, "FabricTex"), 4);
+    glUniform1i(glGetUniformLocation(program_id, "MesaTex"), 5);
+    glUniform1i(glGetUniformLocation(program_id, "BolaTex"), 6);
     glUseProgram(0);
 }
 
@@ -1664,6 +1679,20 @@ void buildFirstScene()
     sceneVector.push_back(Objeto);
 
 
+    // mesinha
+
+    Objeto.model = Matrix_Translate(-3.50f,-0.8f,8.50f)
+                   * Matrix_Scale(2.5f, 2.5f,2.5f)
+                   * Matrix_Rotate_Y(1.50f);
+    strcpy(Objeto.name,"mesa");
+    Objeto.nameId = MESA;
+    sceneVector.push_back(Objeto);
+
+    Objeto.model = Matrix_Translate(-4.0f,0.70f,8.50f)
+                   * Matrix_Scale(0.2f, 0.2f,0.2f);
+    strcpy(Objeto.name,"bola");
+    Objeto.nameId = BOLA;
+    sceneVector.push_back(Objeto);
 
 }
 
@@ -1936,4 +1965,54 @@ void lightSwitch(float x, float y, float z)
 
         }
     }
+};
+
+void bolaPapel(float x, float y, float z)
+{    if(teste_interruptor)
+    {
+        //variavel é true quando usuario solta botao direito
+        teste_interruptor = false;
+        //vetor ray_direction (sentido da camera)
+        float norma_camera = sqrt( x*x + y*y + z*z );
+        glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
+
+        // coordenadas minimas e máximas da esfera
+        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
+        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+
+        // transformações da esfera
+        glm::mat4 target_model = sceneVector[4].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+
+        float intersection_distance;
+        //testa se tocou o botão
+        if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+            printf("\nAAAAAAAAAAAAAAAAAAAAAA");
+
+            if(interruptor==0&&intersection_distance<=3.5f)
+            {
+                interruptor=1;
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
+                if(rand()%20 == 0)
+                    PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\ghast2.wav", NULL, SND_FILENAME | SND_ASYNC);
+
+            }
+            else if (intersection_distance<=3.5f)
+            {
+                interruptor=0;
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
+            }
+
+            //glUniform1i(interruptor_uniform,interruptor);
+
+        }
+    }
+
 };
