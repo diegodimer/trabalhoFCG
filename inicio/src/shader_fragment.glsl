@@ -27,7 +27,7 @@ uniform float timeCounter;
 #define DOOR   7
 #define MESA   8
 #define BOLA   9
-
+#define CUBE  10
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -43,6 +43,7 @@ uniform sampler2D ZombieTex;
 uniform sampler2D FabricTex;
 uniform sampler2D MesaTex;
 uniform sampler2D BolaTex;
+uniform sampler2D CubeTex;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -178,6 +179,16 @@ void main()
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
         Kd = (texture(BolaTex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0.0,0.0,0.0);
+        Ka = Kd;
+        q = 1.0f;
+    }
+    else if(object_id == CUBE){
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(CubeTex, vec2(U,V)).rgb);
         // Equação de Iluminação
         Ks = vec3(0.0,0.0,0.0);
         Ka = Kd;

@@ -332,6 +332,7 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/textures/fabric.jpg");      // textura do sofá
     LoadTextureImage("../../data/textures/mesa.jpg");      // textura da mesa
     LoadTextureImage("../../data/textures/bola.jpg");      // textura da bola de papel
+    LoadTextureImage("../../data/textures/cube.jpg");      // textura do cubo
 
     // Carregamos os shaders de vértices e de fragmentos que serão utilizados
     // para renderização. Veja slides 217-219 do documento "Aula_03_Rendering_Pipeline_Grafico.pdf".
@@ -371,6 +372,10 @@ int main(int argc, char* argv[])
     ComputeNormals(&bolamodel);
     BuildTrianglesAndAddToVirtualScene(&bolamodel);
 
+    ObjModel cubemodel("../../data/obj/cube.obj");
+    ComputeNormals(&cubemodel);
+    BuildTrianglesAndAddToVirtualScene(&cubemodel);
+
 
     if ( argc > 1 )
     {
@@ -406,6 +411,7 @@ int main(int argc, char* argv[])
 #define DOOR   7
 #define MESA   8
 #define BOLA   9
+#define CUBE  10
 
 
 
@@ -651,6 +657,7 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "FabricTex"), 4);
     glUniform1i(glGetUniformLocation(program_id, "MesaTex"), 5);
     glUniform1i(glGetUniformLocation(program_id, "BolaTex"), 6);
+    glUniform1i(glGetUniformLocation(program_id, "CubeTex"), 7);
     glUseProgram(0);
 }
 
@@ -1711,6 +1718,12 @@ void buildFirstScene()
     strcpy(Objeto.name,"bola");
     Objeto.nameId = BOLA;
     sceneVector.push_back(Objeto);
+
+    Objeto.model = Matrix_Translate(g_AngleX,g_AngleY,g_AngleZ);
+    strcpy(Objeto.name,"cube");
+    Objeto.nameId = CUBE;
+    sceneVector.push_back(Objeto);
+
 
 }
 
