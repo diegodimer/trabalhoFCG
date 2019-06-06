@@ -145,6 +145,7 @@ void movimentacaoCamera(glm::vec4*);
 void buildFirstScene();
 void lightSwitch(float, float, float);
 void bolaPapel(float, float, float);
+void abrePorta (float, float, float);
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
@@ -230,7 +231,10 @@ bool teste_interruptor=false;
 GLint paper_uniform;
 int paper=1;
 bool teste_paper=false;
-
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEIS DA PORTA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+GLint door_uniform;
+int door_locked=1;
+bool teste_door=false;
 
 int lightsOn;
 
@@ -497,9 +501,11 @@ int main(int argc, char* argv[])
 
         lightSwitch(x,y,z);
         bolaPapel(x,y,z);
+        abrePorta(x,y,z);
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
+        glUniform1i(door_uniform,door_locked);
         glUniform1i(interruptor_uniform,interruptor);
         glUniform1i(paper_uniform,paper);
         glUniform1i(lightsOn_uniform,lightsOn);
@@ -634,7 +640,8 @@ void LoadShadersFromFiles()
 
     lightsOn_uniform = glGetUniformLocation(program_id, "lightsOn");
     interruptor_uniform = glGetUniformLocation(program_id, "interruptor");
-    interruptor_uniform = glGetUniformLocation(program_id, "paper");
+    paper_uniform = glGetUniformLocation(program_id, "paper");
+    door_uniform = glGetUniformLocation(program_id, "door_locked");
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
     glUseProgram(program_id);
     glUniform1i(glGetUniformLocation(program_id, "BloodyTex"), 0);
@@ -1079,6 +1086,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         //!!!!!!!!!!!!!!!!!!!!!!!!!TESTE INTERRUPTOR!!!!!!!!!!!!!!!!!!!!!
         teste_interruptor = true;
         teste_paper = true;
+        teste_door = true;
     }
     if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
     {
@@ -1696,6 +1704,8 @@ void buildFirstScene()
     Objeto.nameId = MESA;
     sceneVector.push_back(Objeto);
 
+    //bola
+
     Objeto.model = Matrix_Translate(-4.0f,0.70f,8.50f)
                    * Matrix_Scale(0.2f, 0.2f,0.2f);
     strcpy(Objeto.name,"bola");
@@ -2023,4 +2033,49 @@ void bolaPapel(float x, float y, float z)
         }
     }
 
+};
+
+void abrePorta (float x, float y, float z)
+{
+    if(teste_door)
+    {
+        //variavel é true quando usuario solta botao direito
+        teste_door = false;
+        //vetor ray_direction (sentido da camera)
+        float norma_camera = sqrt( x*x + y*y + z*z );
+        glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
+
+        // coordenadas minimas e máximas da esfera
+        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
+        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+
+        // transformações da esfera
+        glm::mat4 target_model = Matrix_Translate(-5.0f,2.75f,24.0f); // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+
+        float intersection_distance;
+        //testa se tocou o botão
+        if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+            printf("\nA porta foi clicada");
+
+            if(door_locked==1&&intersection_distance<=5.0f)
+            {
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\locked-door.wav", NULL, SND_FILENAME | SND_ASYNC);
+
+            }
+           //!!!!!!!!!!!!!!!!PORTA DESTRANCADA, IR P/ OUTRO QUARTO
+           /*
+            else if (intersection_distance<=5.0f)
+            {
+                //
+            }*/
+        }
+    }
 };
