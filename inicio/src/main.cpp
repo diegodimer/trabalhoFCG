@@ -146,6 +146,7 @@ void buildFirstScene();
 void lightSwitch(float, float, float);
 void bolaPapel(float, float, float);
 void abrePorta (float, float, float);
+void testaCubo(float, float, float);
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
@@ -235,6 +236,9 @@ bool teste_paper=false;
 GLint door_uniform;
 int door_locked=1;
 bool teste_door=false;
+
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEL P TESTE DO CUBO!!!!!!!!!!!!!!!!!!!!!!!!!!!
+bool lookAt_Cubo = false;
 
 int lightsOn;
 
@@ -412,6 +416,7 @@ int main(int argc, char* argv[])
 #define MESA   8
 #define BOLA   9
 #define CUBE  10
+#define PAPEL 11
 
 
 
@@ -486,7 +491,7 @@ int main(int argc, char* argv[])
         {
             // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
             camera_position_c  = camera_position_c + (cameraMov * deltaT); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-            //glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
 
 
@@ -495,11 +500,10 @@ int main(int argc, char* argv[])
         {
             // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
             // Veja slides 172-182 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
-            camera_position_c  = glm::vec4(x,2.0f,z,1.0f); // Ponto "c", centro da câmera
-            camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            //!!!!!!!!!!!!saporra vai ficar travadona, n sei como mudar!!!!!!!!!!!!!!!!!!!!!!!!
+            //camera_position_c  = glm::vec4(x,2.0f,z,1.0f); // Ponto "c", centro da câmera
+            camera_lookat_l    = glm::vec4(-4.0f,0.7f,8.50f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
-
-
         }
 
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
@@ -508,6 +512,7 @@ int main(int argc, char* argv[])
         lightSwitch(x,y,z);
         bolaPapel(x,y,z);
         abrePorta(x,y,z);
+        testaCubo(x,y,z);
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
@@ -1307,7 +1312,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     // Se o usuário apertar a tecla O, utilizamos projeção ortográfica.
     if (key == GLFW_KEY_O && action == GLFW_PRESS)
     {
-        g_UsePerspectiveProjection = false;
+        lookAt_Cubo=true;
     }
 
     // Se o usuário apertar a tecla H, fazemos um "toggle" do texto informativo mostrado na tela.
@@ -1719,7 +1724,11 @@ void buildFirstScene()
     Objeto.nameId = BOLA;
     sceneVector.push_back(Objeto);
 
-    Objeto.model = Matrix_Translate(g_AngleX,g_AngleY,g_AngleZ);
+    //cubo
+
+    Objeto.model = Matrix_Translate(0.4f,-0.1f,31.0f)
+                    * Matrix_Scale(0.7f, 0.7f,0.7f)
+                    * Matrix_Rotate_Y(1.57f);
     strcpy(Objeto.name,"cube");
     Objeto.nameId = CUBE;
     sceneVector.push_back(Objeto);
@@ -2089,6 +2098,43 @@ void abrePorta (float x, float y, float z)
             {
                 //
             }*/
+        }
+    }
+};
+
+void testaCubo (float x, float y, float z)
+{
+    if(lookAt_Cubo)
+    {
+        //variavel é true quando usuario solta botao direito
+        lookAt_Cubo = false;
+        //vetor ray_direction (sentido da camera)
+        float norma_camera = sqrt( x*x + y*y + z*z );
+        glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
+
+        // coordenadas minimas e máximas da esfera
+        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
+        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+
+        // transformações da esfera
+        glm::mat4 target_model = Matrix_Translate(-4.0f,0.7f,8.5f); // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+
+        float intersection_distance;
+        //testa se tocou o botão
+        if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+
+            if(intersection_distance<=3.0f)
+            {
+                g_UsePerspectiveProjection = false;
+            }
         }
     }
 };
