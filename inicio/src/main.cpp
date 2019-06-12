@@ -142,10 +142,12 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void movimentacaoCamera(glm::vec4*);
 /* construtor de cena */
+void buildRoom(float, float);
 void buildFirstScene();
 void lightSwitch(float, float, float);
 void bolaPapel(float, float, float);
 void abrePorta (float, float, float);
+void testaCubo(float, float, float);
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
@@ -235,6 +237,9 @@ bool teste_paper=false;
 GLint door_uniform;
 int door_locked=1;
 bool teste_door=false;
+
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEL P TESTE DO CUBO!!!!!!!!!!!!!!!!!!!!!!!!!!!
+bool lookAt_Cubo = false;
 
 int lightsOn;
 
@@ -412,6 +417,7 @@ int main(int argc, char* argv[])
 #define MESA   8
 #define BOLA   9
 #define CUBE  10
+#define PAPEL 11
 
 
 
@@ -420,7 +426,7 @@ int main(int argc, char* argv[])
     double tAgora;
     float deltaT;
     glm::vec4 cameraMov;
-    camera_position_c = glm::vec4(1.0f, 2.0f, 1.0f, 1.0f);
+    camera_position_c = glm::vec4(0.0f, 2.0f, 0.0f, 1.0f);
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
     while (!glfwWindowShouldClose(window))
@@ -486,7 +492,7 @@ int main(int argc, char* argv[])
         {
             // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
             camera_position_c  = camera_position_c + (cameraMov * deltaT); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-            //glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
 
 
@@ -495,11 +501,10 @@ int main(int argc, char* argv[])
         {
             // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
             // Veja slides 172-182 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
-            camera_position_c  = glm::vec4(x,2.0f,z,1.0f); // Ponto "c", centro da câmera
-            camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-            camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
-
-
+            //!!!!!!!!!!!!saporra vai ficar travadona, n sei como mudar!!!!!!!!!!!!!!!!!!!!!!!!
+             camera_position_c  = glm::vec4(x+9.0f,2.0f,z+1.50f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            glm::vec4 camera_lookat_l  = glm::vec4(9.0f,0.7f,1.50f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            camera_view_vector = camera_lookat_l - camera_position_c;// Vetor "view", sentido para onde a câmera está virad
         }
 
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
@@ -508,6 +513,7 @@ int main(int argc, char* argv[])
         lightSwitch(x,y,z);
         bolaPapel(x,y,z);
         abrePorta(x,y,z);
+        testaCubo(x,y,z);
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
@@ -1294,6 +1300,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     if (key == GLFW_KEY_P && action == GLFW_PRESS)
     {
         g_UsePerspectiveProjection = true;
+        camera_position_c.y = 2.0f;
     }
 
     if (key == GLFW_KEY_L && action == GLFW_PRESS)
@@ -1307,6 +1314,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     // Se o usuário apertar a tecla O, utilizamos projeção ortográfica.
     if (key == GLFW_KEY_O && action == GLFW_PRESS)
     {
+        lookAt_Cubo=true;
         g_UsePerspectiveProjection = false;
     }
 
@@ -1598,8 +1606,8 @@ void buildFirstScene()
     Objeto.nameId = ZOMBIE;
     sceneVector.push_back(Objeto);
 
-//desenho da porta
-    Objeto.model = Matrix_Translate(-5.0f,2.75f,24.0f)
+    //desenho da porta
+    Objeto.model = Matrix_Translate(-10.0f,2.50f,12.50f)
                    * Matrix_Scale(0.02f,0.035f,0.05f)
                    * Matrix_Rotate_Y(1.57)
                    * Matrix_Rotate_X(-1.57);
@@ -1608,9 +1616,9 @@ void buildFirstScene()
     sceneVector.push_back(Objeto);
 
 // desenho do sofa
-    Objeto.model = Matrix_Scale(0.025f, 0.025f, 0.025f)
-                   * Matrix_Translate(-147.50f, -41.0f, 50.0f)
-                   * Matrix_Rotate_Y(1.57)
+    Objeto.model =   Matrix_Translate(8.50f, -1.0f, 10.0f)
+                   * Matrix_Scale(0.025f, 0.025f, 0.025f)
+                   * Matrix_Rotate_Y(-1.57)
                    * Matrix_Rotate_X(-1.57);
     strcpy(Objeto.name,"sofa");
     Objeto.nameId = SOFA;
@@ -1618,9 +1626,9 @@ void buildFirstScene()
 
 
 // desenho do sofa
-    Objeto.model = Matrix_Scale(0.025f, 0.025f, 0.025f)
-                   * Matrix_Translate(-147.50f, -41.0f, 650.0f)
-                   * Matrix_Rotate_Y(1.57)
+    Objeto.model =   Matrix_Translate(2.0f, -1.0f, 18.50f)
+                   * Matrix_Scale(0.025f, 0.025f, 0.025f)
+                   * Matrix_Rotate_Y(3.14159f)
                    * Matrix_Rotate_X(-1.57);
     strcpy(Objeto.name,"sofa");
     Objeto.nameId = SOFA;
@@ -1630,7 +1638,7 @@ void buildFirstScene()
     if(interruptor)
     {
 
-        Objeto.model = Matrix_Translate(-5.0f,1.5f,33.0f)
+        Objeto.model = Matrix_Translate(-10.0f,2.5f,16.50f)
                        * Matrix_Rotate_Y(1.57);
         strcpy(Objeto.name,"switch_on");
         Objeto.nameId = SWITCH;
@@ -1638,73 +1646,18 @@ void buildFirstScene()
     }
     else
     {
-        Objeto.model =Matrix_Translate(-5.0f,1.5f,33.0f)
+        Objeto.model =Matrix_Translate(-10.0f,2.5f,16.50f)
                       * Matrix_Rotate_Y(1.57);
         strcpy(Objeto.name,"switch_off");
         Objeto.nameId = SWITCH;
         sceneVector.push_back(Objeto);
     }
-    float comprimento_corredor = 20.0f;
-    //formato longo do corredor
-    Objeto.model = Matrix_Scale(5.0f,1.0f,comprimento_corredor);
-    strcpy(Objeto.name, "plane");
-    Objeto.nameId = PLANE;
-    PushMatrix(Objeto.model);
-    // CHÃO
-    Objeto.model =Matrix_Translate(0.0f,-1.0f,comprimento_corredor-5.0f)*Objeto.model;
-    Objeto.nameId = CHAO;
-    sceneVector.push_back(Objeto);
 
-
-    PopMatrix(Objeto.model);
-    PushMatrix(Objeto.model);
-    //TETO
-    Objeto.model= Matrix_Translate(0.0f,9.0f,comprimento_corredor-5.0f)*Matrix_Rotate_Z(3.14159)*Objeto.model;
-    Objeto.nameId = TETO;
-    sceneVector.push_back(Objeto);
-    PopMatrix(Objeto.model);
-    PushMatrix(Objeto.model);
-
-    //PAREDE À ESQUERDA DO COELHO
-    Objeto.model= Matrix_Translate(-5.0f,4.0f,comprimento_corredor-5.0f)
-                  * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
-                  * Matrix_Rotate_Y(1.57)
-                  * Matrix_Rotate_X(1.57);
-    Objeto.nameId = PLANE;
-    sceneVector.push_back(Objeto);
-
-    PopMatrix(Objeto.model);
-    PushMatrix(Objeto.model);
-
-    // parede a direita
-    Objeto.model= Matrix_Translate(5.0f,4.0f,comprimento_corredor-5.0f)
-                  * Matrix_Scale(1.0f,5.0f, comprimento_corredor)
-                  * Matrix_Rotate_Y(1.57)
-                  * Matrix_Rotate_X(4.71159);
-    sceneVector.push_back(Objeto);
-
-    PopMatrix(Objeto.model);
-    PopMatrix(Objeto.model);
-
-
-    // largura do corredor = 5
-    Objeto.model = Matrix_Scale(5.0f,1.0f,5.0f);
-    PushMatrix(Objeto.model);
-
-    //parede atrás do coelho
-    Objeto.model= Matrix_Translate(0.0f,4.0f,-5.0f)*Matrix_Rotate_X(1.5709)*Objeto.model;
-    sceneVector.push_back(Objeto);
-
-    PopMatrix(Objeto.model);
-    PushMatrix(Objeto.model);
-
-    Objeto.model= Matrix_Translate(0.0f,4.0f,comprimento_corredor*2 - 5.0f)*Matrix_Rotate_X(-1.5709)*Objeto.model;
-    sceneVector.push_back(Objeto);
 
 
     // mesinha
 
-    Objeto.model = Matrix_Translate(-3.50f,-0.8f,8.50f)
+    Objeto.model = Matrix_Translate(8.50f,-0.7f,1.50f)
                    * Matrix_Scale(2.5f, 2.5f,2.5f)
                    * Matrix_Rotate_Y(1.50f);
     strcpy(Objeto.name,"mesa");
@@ -1713,17 +1666,24 @@ void buildFirstScene()
 
     //bola
 
-    Objeto.model = Matrix_Translate(-4.0f,0.70f,8.50f)
+    Objeto.model = Matrix_Translate(9.0f,0.7f,1.50f)
                    * Matrix_Scale(0.2f, 0.2f,0.2f);
     strcpy(Objeto.name,"bola");
     Objeto.nameId = BOLA;
     sceneVector.push_back(Objeto);
 
-    Objeto.model = Matrix_Translate(g_AngleX,g_AngleY,g_AngleZ);
+    //cubo
+
+    Objeto.model = Matrix_Translate(-7.50f,-0.3f,-5.50f)
+                    * Matrix_Scale(0.7f, 0.7f,0.7f)
+                    * Matrix_Rotate_Y(1.57f);
     strcpy(Objeto.name,"cube");
     Objeto.nameId = CUBE;
     sceneVector.push_back(Objeto);
 
+
+    // constrói o quarto 20x10 (todos quartos tem 4 de altura)
+    buildRoom(10,20);
 
 }
 
@@ -1959,11 +1919,14 @@ void lightSwitch(float x, float y, float z)
         glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
 
         // coordenadas minimas e máximas da esfera
-        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
-        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+        glm::vec4 aabb_min = glm::vec4(-1.0f,-1.0f,-1.0f,1.0f);
+        glm::vec4 aabb_max = glm::vec4(1.0f,1.0f,1.0f, 1.0f);
 
         // transformações da esfera
         glm::mat4 target_model = sceneVector[4].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+
+//        aabb_min = aabb_min * target_model;
+//        aabb_max = aabb_min * target_model;
 
         float intersection_distance;
         //testa se tocou o botão
@@ -2012,7 +1975,7 @@ void bolaPapel(float x, float y, float z)
         glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
 
         // transformações da esfera
-        glm::mat4 target_model = Matrix_Translate(-4.0f,0.70f,8.50f); // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+        glm::mat4 target_model = sceneVector[6].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
 
         float intersection_distance;
         //testa se tocou o botão
@@ -2092,3 +2055,99 @@ void abrePorta (float x, float y, float z)
         }
     }
 };
+
+void testaCubo (float x, float y, float z)
+{
+    if(lookAt_Cubo)
+    {
+        //variavel é true quando usuario solta botao direito
+        lookAt_Cubo = false;
+        //vetor ray_direction (sentido da camera)
+        float norma_camera = sqrt( x*x + y*y + z*z );
+        glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
+
+        // coordenadas minimas e máximas da esfera
+        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
+        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+
+        // transformações da esfera
+        glm::mat4 target_model = Matrix_Translate(-4.0f,0.7f,8.5f); // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+
+        float intersection_distance;
+        //testa se tocou o botão
+        if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+
+            if(intersection_distance<=3.0f)
+            {
+                g_UsePerspectiveProjection = false;
+            }
+        }
+    }
+};
+
+void buildRoom(float largura, float comprimento){
+
+    struct sceneHelper Objeto;
+
+
+    //formato longo do corredor
+    Objeto.model = Matrix_Scale(largura,1.0f,comprimento);
+    strcpy(Objeto.name, "plane");
+    Objeto.nameId = PLANE;
+    PushMatrix(Objeto.model);
+
+    // CHÃO
+    Objeto.model = Objeto.model * Matrix_Translate(0.0f,-1.0f,0);
+    Objeto.nameId = CHAO;
+    sceneVector.push_back(Objeto);
+
+
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
+
+    // TETO
+    Objeto.model = Objeto.model * Matrix_Translate(0,7.0f,0) * Matrix_Rotate_X(3.14159f);
+    Objeto.nameId = TETO;
+    sceneVector.push_back(Objeto);
+
+
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
+
+    // parede da frente do zumbi
+    Objeto.model = Objeto.model * Matrix_Rotate_X(-1.5708f) * Matrix_Translate(0,-1.0f,3.0f) * Matrix_Scale(1.0f,1.0f,4.0f);
+    Objeto.nameId = PLANE;
+    sceneVector.push_back(Objeto);
+
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
+
+    // parede atrás do zumbi
+    Objeto.model = Objeto.model * Matrix_Rotate_X(1.5708f) * Matrix_Rotate_Y(3.14159f) * Matrix_Translate(0,-1.0f,3.0f) * Matrix_Scale(1.0f,1.0f,4.0f);
+    Objeto.nameId = PLANE;
+    sceneVector.push_back(Objeto);
+
+
+
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
+
+    Objeto.model = Objeto.model * Matrix_Rotate_Z(1.5708f) * Matrix_Rotate_Y(1.5708f) * Matrix_Translate(0,-1.0f,3.0f) * Matrix_Scale(1.0f,1.0f,4.0f);
+    sceneVector.push_back(Objeto);
+
+
+    PopMatrix(Objeto.model);
+    PushMatrix(Objeto.model);
+
+    Objeto.model = Objeto.model * Matrix_Rotate_Z(-1.5708f) *Matrix_Rotate_Y(-1.5708f)* Matrix_Translate(0,-1.0f,3.0f) * Matrix_Scale(1.0f,1.0f,4.0f);
+    sceneVector.push_back(Objeto);
+
+}
