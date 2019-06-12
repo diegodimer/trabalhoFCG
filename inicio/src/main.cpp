@@ -505,6 +505,7 @@ int main(int argc, char* argv[])
              camera_position_c  = glm::vec4(x+9.0f,2.0f,z+1.50f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             glm::vec4 camera_lookat_l  = glm::vec4(9.0f,0.7f,1.50f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = camera_lookat_l - camera_position_c;// Vetor "view", sentido para onde a câmera está virad
+
         }
 
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
@@ -1316,6 +1317,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     {
         lookAt_Cubo=true;
         g_UsePerspectiveProjection = false;
+
     }
 
     // Se o usuário apertar a tecla H, fazemos um "toggle" do texto informativo mostrado na tela.
@@ -1674,6 +1676,7 @@ void buildFirstScene()
 
     //cubo
 
+
     Objeto.model = Matrix_Translate(-7.50f,-0.3f,-5.50f)
                     * Matrix_Scale(0.7f, 0.7f,0.7f)
                     * Matrix_Rotate_Y(1.57f);
@@ -2022,11 +2025,14 @@ void abrePorta (float x, float y, float z)
         glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
 
         // coordenadas minimas e máximas da esfera
-        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
-        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+        glm::vec4 aabb_min = glm::vec4(-1.0f,-1.0f,-1.0f,1.0f);
+        glm::vec4 aabb_max = glm::vec4(1.0f,1.0f,1.0f,1.0f);
 
         // transformações da esfera
-        glm::mat4 target_model = Matrix_Translate(-5.0f,2.75f,24.0f); // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+        glm::mat4 target_model = sceneVector[1].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+
+        aabb_min = aabb_min * target_model;
+        aabb_max = aabb_max * target_model;
 
         float intersection_distance;
         //testa se tocou o botão
@@ -2093,6 +2099,7 @@ void testaCubo (float x, float y, float z)
     }
 };
 
+
 void buildRoom(float largura, float comprimento){
 
     struct sceneHelper Objeto;
@@ -2151,3 +2158,4 @@ void buildRoom(float largura, float comprimento){
     sceneVector.push_back(Objeto);
 
 }
+
