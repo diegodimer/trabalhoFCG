@@ -50,6 +50,8 @@ uniform sampler2D CubeTex;
 #define M_PI_2 1.57079632679489661923
 
 
+//
+in vec3 cor_v;
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec3 color;
 
@@ -108,11 +110,11 @@ void main()
         q = 1.0;
 
     }
-       else if ( object_id == DOOR )
+    else if ( object_id == DOOR )
     {
-        Kd = vec3(0.14f,0.08f,0.01f);
+        Kd = vec3(0.22f, 0.10f, 0.0f);
+        Ka = vec3(0.02f, 0.01f, 0.01f);
         Ks = vec3(0.0,0.0,0.0);
-        Ka = Kd;
         q = 1.0f;
     }
     else if ( object_id == SOFA )
@@ -155,13 +157,8 @@ void main()
         Ka = Kd;
         q = 1.0f;
     }
-    else if(object_id == SWITCH){
-        Kd = vec3(0.95f,0.89f,0.4f);
-        Ks = vec3(0.05,0.01,0.005);
-        Ka = Kd/2;
-        q = 0;
-    }
-    else if(object_id == MESA){
+    else if(object_id == MESA)
+    {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
         U = texcoords.x;
         V = texcoords.y;
@@ -173,8 +170,9 @@ void main()
         q = 1.0f;
 
     }
-    else if(object_id == BOLA){
-                // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+    else if(object_id == BOLA)
+    {
+        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
@@ -184,7 +182,8 @@ void main()
         Ka = Kd;
         q = 1.0f;
     }
-    else if(object_id == CUBE){
+    else if(object_id == CUBE)
+    {
         U = texcoords.x;
         V = texcoords.y;
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
@@ -215,9 +214,9 @@ void main()
     vec3 phong_specular_term;
 
 
-    if(lightsOn == 0) // lanterna ligada (luzes desligadas)
+    if(lightsOn == 0 && interruptor == 0) // lanterna ligada (luzes desligadas)
     {
-        float fatt = pow(dot(normalize(p - spotlightPosition), spotlightDirection), 35.12); // função de atenuação
+        float fatt = pow(dot(normalize(p - spotlightPosition), spotlightDirection), 50); // função de atenuação
         if( dot(normalize(p - spotlightPosition), spotlightDirection) > cos(spotlightOpening)) // se tá sendo iluminado pela spotlight
         {
 
@@ -259,6 +258,14 @@ void main()
         color = (lambert_diffuse_term + ambient_term + phong_specular_term)*0.002;
     }
 
+
+    if(object_id == SWITCH )
+    {
+        if(lightsOn==1 && interruptor == 0)
+            color = cor_v*0.001;
+        else
+            color = cor_v;
+    }
 
     // Cor final com correção gamma, considerando monitor sRGB.
     // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas

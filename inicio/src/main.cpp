@@ -149,7 +149,7 @@ void bolaPapel(float, float, float);
 void abrePorta (float, float, float);
 void testaCubo(float, float, float);
 bool collisionCheckPointBox(glm::vec4, glm::vec4, glm::vec4);
-bool collisionCheckBoxBox(glm::vec4 , glm::vec4 , glm::vec4 , glm::vec4);
+
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
@@ -186,12 +186,6 @@ float g_ScreenRatio = 1.0f;
 float g_AngleX = 0.0f;
 float g_AngleY = 0.0f;
 float g_AngleZ = 0.0f;
-
-//variáveis do corpo (pra gente usar em algo)
-float g_TorsoPositionX;
-float g_TorsoPositionY;
-float g_ForearmAngleX;
-float g_ForearmAngleZ;
 
 // "g_LeftMouseButtonPressed = true" se o usuário está com o botão esquerdo do mouse
 // pressionado no momento atual. Veja função MouseButtonCallback().
@@ -433,12 +427,6 @@ int main(int argc, char* argv[])
     camera_position_c = glm::vec4(3.0f, 2.0f, 5.0f, 1.0f);
 
 
-                //Cria vetores auxiliares para ajudar a definir a BBox da posição futura
-            glm::vec4 cameraBboxMaxOffset = glm::vec4(0.25, 1.20, 0.25, 0);
-            glm::vec4 cameraBboxMinOffset = -cameraBboxMaxOffset;
-
-            glm::vec4 futurePositionBboxMin = camera_position_c + cameraBboxMaxOffset;
-            glm::vec4 futurePositionBboxMax = camera_position_c + cameraBboxMinOffset;
     // Ficamos em loop, renderizando, até que o usuário feche a janela
      bool canMove ;
     while (!glfwWindowShouldClose(window))
@@ -535,7 +523,6 @@ int main(int argc, char* argv[])
             else
                 camera_position_c = camera_position_c;
             canMove = true;
-            glm::vec4 camera_lookat_l = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
 
 
@@ -1225,37 +1212,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
         g_LastCursorPosY = ypos;
     }
 
-    if (g_RightMouseButtonPressed)
-    {
-        // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
-        float dx = xpos - g_LastCursorPosX;
-        float dy = ypos - g_LastCursorPosY;
 
-        // Atualizamos parâmetros da antebraço com os deslocamentos
-        g_ForearmAngleZ -= 0.01f*dx;
-        g_ForearmAngleX += 0.01f*dy;
-
-        // Atualizamos as variáveis globais para armazenar a posição atual do
-        // cursor como sendo a última posição conhecida do cursor.
-        g_LastCursorPosX = xpos;
-        g_LastCursorPosY = ypos;
-    }
-
-    if (g_MiddleMouseButtonPressed)
-    {
-        // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
-        float dx = xpos - g_LastCursorPosX;
-        float dy = ypos - g_LastCursorPosY;
-
-        // Atualizamos parâmetros da antebraço com os deslocamentos
-        g_TorsoPositionX += 0.01f*dx;
-        g_TorsoPositionY -= 0.01f*dy;
-
-        // Atualizamos as variáveis globais para armazenar a posição atual do
-        // cursor como sendo a última posição conhecida do cursor.
-        g_LastCursorPosX = xpos;
-        g_LastCursorPosY = ypos;
-    }
 }
 
 // Função callback chamada sempre que o usuário movimenta a "rodinha" do mouse.
@@ -1360,10 +1317,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         g_AngleX = 0.0f;
         g_AngleY = 0.0f;
         g_AngleZ = 0.0f;
-        g_ForearmAngleX = 0.0f;
-        g_ForearmAngleZ = 0.0f;
-        g_TorsoPositionX = 0.0f;
-        g_TorsoPositionY = 0.0f;
+
     }
 
     // Se o usuário apertar a tecla P, utilizamos projeção perspectiva.
@@ -1375,12 +1329,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
 
     if (key == GLFW_KEY_L && action == GLFW_PRESS)
     {
-        lightsOn = 0;
+        lightsOn = lightsOn == 0? 1: 0;
     }
-    if (key == GLFW_KEY_L && action == GLFW_RELEASE)
-    {
-        lightsOn = 1;
-    }
+
     // Se o usuário apertar a tecla O, utilizamos projeção ortográfica.
     if (key == GLFW_KEY_O && action == GLFW_PRESS)
     {
@@ -2240,13 +2191,3 @@ bool collisionCheckPointBox(glm::vec4 point, glm::vec4 bboxMin, glm::vec4 bboxMa
     return false;
 }
 
-bool collisionCheckBoxBox(glm::vec4 bboxMin_1, glm::vec4 bboxMax_1, glm::vec4 bboxMin_2, glm::vec4 bboxMax_2)
-{
-    if (bboxMax_1.x >= bboxMin_2.x && bboxMin_1.x <= bboxMax_2.x &&
-        bboxMax_1.y >= bboxMin_2.y && bboxMin_1.y <= bboxMax_2.y &&
-        bboxMax_1.z >= bboxMin_2.z && bboxMin_1.z <= bboxMax_2.z)
-        return true;
-    else
-        return false;
-
-}

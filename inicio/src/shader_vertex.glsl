@@ -10,6 +10,8 @@ layout (location = 2) in vec2 texture_coefficients;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform int object_id;
+uniform vec4 light_position;
 
 // Atributos de vértice que serão gerados como saída ("out") pelo Vertex Shader.
 // ** Estes serão interpolados pelo rasterizador! ** gerando, assim, valores
@@ -19,49 +21,39 @@ out vec4 position_world;
 out vec4 position_model;
 out vec4 normal;
 out vec2 texcoords;
-
+out vec3 cor_v;
 void main()
 {
-    // A variável gl_Position define a posição final de cada vértice
-    // OBRIGATORIAMENTE em "normalized device coordinates" (NDC), onde cada
-    // coeficiente estará entre -1 e 1 após divisão por w.
-    // Veja slides 144 e 150 do documento "Aula_09_Projecoes.pdf".
-    //
-    // O código em "main.cpp" define os vértices dos modelos em coordenadas
-    // locais de cada modelo (array model_coefficients). Abaixo, utilizamos
-    // operações de modelagem, definição da câmera, e projeção, para computar
-    // as coordenadas finais em NDC (variável gl_Position). Após a execução
-    // deste Vertex Shader, a placa de vídeo (GPU) fará a divisão por W. Veja
-    // slide 189 do documento "Aula_09_Projecoes.pdf".
 
     gl_Position = projection * view * model * model_coefficients;
 
-    // Como as variáveis acima  (tipo vec4) são vetores com 4 coeficientes,
-    // também é possível acessar e modificar cada coeficiente de maneira
-    // independente. Esses são indexados pelos nomes x, y, z, e w (nessa
-    // ordem, isto é, 'x' é o primeiro coeficiente, 'y' é o segundo, ...):
-    //
-    //     gl_Position.x = model_coefficients.x;
-    //     gl_Position.y = model_coefficients.y;
-    //     gl_Position.z = model_coefficients.z;
-    //     gl_Position.w = model_coefficients.w;
-    //
 
-    // Agora definimos outros atributos dos vértices que serão interpolados pelo
-    // rasterizador para gerar atributos únicos para cada fragmento gerado.
-
-    // Posição do vértice atual no sistema de coordenadas global (World).
     position_world = model * model_coefficients;
 
     // Posição do vértice atual no sistema de coordenadas local do modelo.
     position_model = model_coefficients;
 
     // Normal do vértice atual no sistema de coordenadas global (World).
-    // Veja slide 107 do documento "Aula_07_Transformacoes_Geometricas_3D.pdf".
     normal = inverse(transpose(model)) * normal_coefficients;
     normal.w = 0.0;
 
     // Coordenadas de textura obtidas do arquivo OBJ (se existirem!)
     texcoords = texture_coefficients;
+    float U,V;
+    if (object_id == 6)
+    {
+
+        vec3 lightfontColor = vec3(1.0f, 1.0f, 1.0f);
+        vec3 ambientColor = vec3(1.0f, 1.0f, 1.0f);
+
+        vec4 n = normalize(normal);
+        vec4 lightDirection = normalize(light_position - position_world);
+
+        // cordenadas de textura
+        vec3 kd = vec3(0.4f, 0.2f, 0.01f);
+        vec3 ka = vec3(0.02f, 0.01f, 0.01f);
+
+        cor_v = kd * lightfontColor * max(0, dot(n, lightDirection)) + ka * ambientColor;
+    }
 }
 
