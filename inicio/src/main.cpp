@@ -148,6 +148,8 @@ void lightSwitch(float, float, float);
 void bolaPapel(float, float, float);
 void abrePorta (float, float, float);
 void testaCubo(float, float, float);
+bool collisionCheckPointBox(glm::vec4, glm::vec4, glm::vec4);
+bool collisionCheckBoxBox(glm::vec4 , glm::vec4 , glm::vec4 , glm::vec4);
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
@@ -221,6 +223,8 @@ GLint view_uniform;
 GLint projection_uniform;
 GLint object_id_uniform;
 GLint lightsOn_uniform;
+GLint bbox_min_uniform;
+GLint bbox_max_uniform;
 // vetor da cena (com todos os elementos)
 std::vector<struct sceneHelper>  sceneVector;
 
@@ -426,9 +430,17 @@ int main(int argc, char* argv[])
     double tAgora;
     float deltaT;
     glm::vec4 cameraMov;
-    camera_position_c = glm::vec4(0.0f, 2.0f, 0.0f, 1.0f);
+    camera_position_c = glm::vec4(3.0f, 2.0f, 5.0f, 1.0f);
 
+
+                //Cria vetores auxiliares para ajudar a definir a BBox da posição futura
+            glm::vec4 cameraBboxMaxOffset = glm::vec4(0.25, 1.20, 0.25, 0);
+            glm::vec4 cameraBboxMinOffset = -cameraBboxMaxOffset;
+
+            glm::vec4 futurePositionBboxMin = camera_position_c + cameraBboxMaxOffset;
+            glm::vec4 futurePositionBboxMax = camera_position_c + cameraBboxMinOffset;
     // Ficamos em loop, renderizando, até que o usuário feche a janela
+     bool canMove ;
     while (!glfwWindowShouldClose(window))
     {
         // constrói primeira cena (aqui se vir mais cenas fazemos aqui mesmo)
@@ -439,7 +451,6 @@ int main(int argc, char* argv[])
             sceneVector.clear();
             // constrói o vetor de novo
             buildFirstScene();
-
         }
         // Aqui executamos as operações de renderização
 
@@ -458,6 +469,8 @@ int main(int argc, char* argv[])
 
 
         movimentacaoCamera(&cameraMov);
+
+
         // Computamos a posição da câmera utilizando coordenadas esféricas.  As
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
@@ -467,6 +480,32 @@ int main(int argc, char* argv[])
         float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
         float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
+
+          canMove = true;
+        //Calculamos se a camera pode, de fato, se mover e não vai colidir com nada
+        for(int i=0; i<sceneVector.size(); i++){
+            glm::vec4 bbox_max =  sceneVector[i].model * glm::vec4(g_VirtualScene[sceneVector[i].name].bbox_max.x, g_VirtualScene[sceneVector[i].name].bbox_max.y,
+                                           g_VirtualScene[sceneVector[i].name].bbox_max.z, 1.0f);
+            glm::vec4 bbox_min =   sceneVector[i].model * glm::vec4(g_VirtualScene[sceneVector[i].name].bbox_min.x, g_VirtualScene[sceneVector[i].name].bbox_min.y,
+                                           g_VirtualScene[sceneVector[i].name].bbox_min.z, 1.0f) ;
+            glm::vec4 fixedBBoxMax = bbox_max;
+            glm::vec4 fixedBBoxMin = bbox_min;
+
+            // com as transoformações as bounding boxes podem ter sofrido alteração (rotações por ex), então volta a ordenar elas
+                bbox_min.x = std::min(fixedBBoxMin.x, fixedBBoxMax.x);
+                bbox_min.y = std::min(fixedBBoxMin.y, fixedBBoxMax.y);
+                bbox_min.z = std::min(fixedBBoxMin.z, fixedBBoxMax.z);
+                bbox_max.x = std::max(fixedBBoxMin.x, fixedBBoxMax.x);
+                bbox_max.y = std::max(fixedBBoxMin.y, fixedBBoxMax.y);
+                bbox_max.z = std::max(fixedBBoxMin.z, fixedBBoxMax.z);
+
+                // planos nao tem volume então é um pouco diferente o role
+            if(sceneVector[i].nameId != CHAO && sceneVector[i].nameId != TETO && sceneVector[i].nameId != PLANE){
+                if(collisionCheckPointBox(camera_position_c + (cameraMov * deltaT), bbox_min, bbox_max))
+                    canMove = false;
+
+            }
+        }
         tAnterior = tAgora;
 
 
@@ -491,8 +530,12 @@ int main(int argc, char* argv[])
         if (g_UsePerspectiveProjection)
         {
             // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
-            camera_position_c  = camera_position_c + (cameraMov * deltaT); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-            glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            if(canMove)
+                camera_position_c  = camera_position_c + (cameraMov * deltaT); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            else
+                camera_position_c = camera_position_c;
+            canMove = true;
+            glm::vec4 camera_lookat_l = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
 
 
@@ -591,6 +634,13 @@ void DrawVirtualObject(const char* object_name)
     // comentários detalhados dentro da definição de BuildTrianglesAndAddToVirtualScene().
     glBindVertexArray(g_VirtualScene[object_name].vertex_array_object_id);
 
+    // Setamos as variáveis "bbox_min" e "bbox_max" do fragment shader
+    // com os parâmetros da axis-aligned bounding box (AABB) do modelo.
+    glm::vec3 bbox_min = g_VirtualScene[object_name].bbox_min;
+    glm::vec3 bbox_max = g_VirtualScene[object_name].bbox_max;
+    glUniform4f(bbox_min_uniform, bbox_min.x, bbox_min.y, bbox_min.z, 1.0f);
+    glUniform4f(bbox_max_uniform, bbox_max.x, bbox_max.y, bbox_max.z, 1.0f);
+
     // Pedimos para a GPU rasterizar os vértices dos eixos XYZ
     // apontados pelo VAO como linhas. Veja a definição de
     // g_VirtualScene[""] dentro da função BuildTrianglesAndAddToVirtualScene(), e veja
@@ -648,8 +698,8 @@ void LoadShadersFromFiles()
     view_uniform            = glGetUniformLocation(program_id, "view"); // Variável da matriz "view" em shader_vertex.glsl
     projection_uniform      = glGetUniformLocation(program_id, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
     object_id_uniform       = glGetUniformLocation(program_id, "object_id"); // Variável "object_id" em shader_fragment.glsl
-//    bbox_min_uniform        = glGetUniformLocation(program_id, "bbox_min");
-//    bbox_max_uniform        = glGetUniformLocation(program_id, "bbox_max");
+    bbox_min_uniform        = glGetUniformLocation(program_id, "bbox_min");
+    bbox_max_uniform        = glGetUniformLocation(program_id, "bbox_max");
 
     lightsOn_uniform = glGetUniformLocation(program_id, "lightsOn");
     interruptor_uniform = glGetUniformLocation(program_id, "interruptor");
@@ -773,6 +823,12 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
         size_t first_index = indices.size();
         size_t num_triangles = model->shapes[shape].mesh.num_face_vertices.size();
 
+        const float minval = std::numeric_limits<float>::min();
+        const float maxval = std::numeric_limits<float>::max();
+
+        glm::vec3 bbox_min = glm::vec3(maxval,maxval,maxval);
+        glm::vec3 bbox_max = glm::vec3(minval,minval,minval);
+
         for (size_t triangle = 0; triangle < num_triangles; ++triangle)
         {
             assert(model->shapes[shape].mesh.num_face_vertices[triangle] == 3);
@@ -786,7 +842,16 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
                 const float vx = model->attrib.vertices[3*idx.vertex_index + 0];
                 const float vy = model->attrib.vertices[3*idx.vertex_index + 1];
                 const float vz = model->attrib.vertices[3*idx.vertex_index + 2];
-                //printf("tri %d vert %d = (%.2f, %.2f, %.2f)\n", (int)triangle, (int)vertex, vx, vy, vz);
+               // printf("tri %d vert %d = (%.2f, %.2f, %.2f)\n", (int)triangle, (int)vertex, vx, vy, vz);
+
+
+                bbox_min.x = std::min(bbox_min.x, vx);
+                bbox_min.y = std::min(bbox_min.y, vy);
+                bbox_min.z = std::min(bbox_min.z, vz);
+                bbox_max.x = std::max(bbox_max.x, vx);
+                bbox_max.y = std::max(bbox_max.y, vy);
+                bbox_max.z = std::max(bbox_max.z, vz);
+
                 model_coefficients.push_back( vx ); // X
                 model_coefficients.push_back( vy ); // Y
                 model_coefficients.push_back( vz ); // Z
@@ -827,7 +892,10 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
         theobject.rendering_mode = GL_TRIANGLES;       // Índices correspondem ao tipo de rasterização GL_TRIANGLES.
         theobject.vertex_array_object_id = vertex_array_object_id;
 
-        g_VirtualScene[model->shapes[shape].name] = theobject;
+        theobject.bbox_min = bbox_min;
+        theobject.bbox_max = bbox_max;
+
+        g_VirtualScene[theobject.name] = theobject;
     }
 
     GLuint VBO_model_coefficients_id;
@@ -883,6 +951,7 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
     // alterar o mesmo. Isso evita bugs.
     glBindVertexArray(0);
 }
+
 
 // Carrega um Vertex Shader de um arquivo GLSL. Veja definição de LoadShader() abaixo.
 GLuint LoadShader_Vertex(const char* filename)
@@ -2148,6 +2217,7 @@ void buildRoom(float largura, float comprimento){
     PushMatrix(Objeto.model);
 
     Objeto.model = Objeto.model * Matrix_Rotate_Z(1.5708f) * Matrix_Rotate_Y(1.5708f) * Matrix_Translate(0,-1.0f,3.0f) * Matrix_Scale(1.0f,1.0f,4.0f);
+    Objeto.nameId = PLANE;
     sceneVector.push_back(Objeto);
 
 
@@ -2155,7 +2225,28 @@ void buildRoom(float largura, float comprimento){
     PushMatrix(Objeto.model);
 
     Objeto.model = Objeto.model * Matrix_Rotate_Z(-1.5708f) *Matrix_Rotate_Y(-1.5708f)* Matrix_Translate(0,-1.0f,3.0f) * Matrix_Scale(1.0f,1.0f,4.0f);
+    Objeto.nameId = PLANE;
     sceneVector.push_back(Objeto);
 
 }
 
+
+
+bool collisionCheckPointBox(glm::vec4 point, glm::vec4 bboxMin, glm::vec4 bboxMax)
+{
+    if (point.x >= bboxMin.x && point.x <= bboxMax.x)
+            if(point.z >= bboxMin.z && point.z <= bboxMax.z)
+                return true;
+    return false;
+}
+
+bool collisionCheckBoxBox(glm::vec4 bboxMin_1, glm::vec4 bboxMax_1, glm::vec4 bboxMin_2, glm::vec4 bboxMax_2)
+{
+    if (bboxMax_1.x >= bboxMin_2.x && bboxMin_1.x <= bboxMax_2.x &&
+        bboxMax_1.y >= bboxMin_2.y && bboxMin_1.y <= bboxMax_2.y &&
+        bboxMax_1.z >= bboxMin_2.z && bboxMin_1.z <= bboxMax_2.z)
+        return true;
+    else
+        return false;
+
+}

@@ -18,7 +18,7 @@
 					<Add option="-g" />
 				</Compiler>
 				<Linker>
-					<Add library="../../../../../../Program Files (x86)/CodeBlocks/MinGW/lib/libwinmm.a" />
+					<Add library="lib/libwinmm.a" />
 				</Linker>
 			</Target>
 			<Target title="Release">
