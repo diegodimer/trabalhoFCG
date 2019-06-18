@@ -491,8 +491,21 @@ int main(int argc, char* argv[])
             if(sceneVector[i].nameId != CHAO && sceneVector[i].nameId != TETO && sceneVector[i].nameId != PLANE){
                 if(collisionCheckPointBox(camera_position_c + (cameraMov * deltaT), bbox_min, bbox_max))
                     canMove = false;
+            } else if (sceneVector[i].nameId == PLANE){
+                // pegamos as normais previamente computadas dos planos (pela função computenormals)
+                glm::vec4 normal = glm::vec4(planemodel.attrib.normals[0], planemodel.attrib.normals[1], planemodel.attrib.normals[2], 0.0f);
+                normal = sceneVector[i].model * normal; // aplicamos a matriz de transformação de cada plano nelas
+                glm::vec4 position_vector = camera_position_c + (cameraMov * deltaT);
+                // position vector é feito a partir da posição da camera após o movimento e a normal.
+                // sei que não é geometricamente correto tratar normal como um ponto como eu faço aqui
+                // PORÉM, eu sei que normal é um vetor que aponta para o plano e eu preciso de um ponto no plano, a normal serve perfeitamente
+                position_vector = glm::vec4(normal.x - position_vector.x, normal.y - position_vector.y, normal.z - position_vector.z, 0.0f);
+                if(dotproduct(position_vector, normal)<=0){ // se o sinal do produto vetorial entre a posição e a normal é <0 significa que ele está a mais de 90º entao nao pode ir
+                    canMove=false;
+                }
 
             }
+
         }
         tAnterior = tAgora;
 
@@ -522,7 +535,7 @@ int main(int argc, char* argv[])
                 camera_position_c  = camera_position_c + (cameraMov * deltaT); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             else
                 camera_position_c = camera_position_c;
-            canMove = true;
+
             camera_view_vector = glm::vec4(-x, -y, -z, 0.0f); // Vetor "view", sentido para onde a câmera está virada
 
 
@@ -532,7 +545,7 @@ int main(int argc, char* argv[])
             // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
             // Veja slides 172-182 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
             //!!!!!!!!!!!!saporra vai ficar travadona, n sei como mudar!!!!!!!!!!!!!!!!!!!!!!!!
-             camera_position_c  = glm::vec4(x+9.0f,2.0f,z+1.50f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            camera_position_c  = glm::vec4(x+9.0f,2.0f,z+1.50f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             glm::vec4 camera_lookat_l  = glm::vec4(9.0f,0.7f,1.50f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = camera_lookat_l - camera_position_c;// Vetor "view", sentido para onde a câmera está virad
 
