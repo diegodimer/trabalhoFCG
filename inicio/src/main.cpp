@@ -154,6 +154,12 @@ bool collisionCheckPointBox(glm::vec4, glm::vec4, glm::vec4);
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint numOfLoadedTextures{0};
 
+glm::vec3 p_inicial_caixa1;
+glm::vec3 p_inicial_caixa2;
+glm::vec3 p_inicial_caixa3;
+glm::vec3 p_inicial_caixa4;
+glm::vec3 p_inicial_caixa5;
+
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
 struct SceneObject
@@ -336,6 +342,11 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/textures/mesa.jpg");      // textura da mesa
     LoadTextureImage("../../data/textures/bola.jpg");      // textura da bola de papel
     LoadTextureImage("../../data/textures/cube.jpg");      // textura do cubo
+    LoadTextureImage("../../data/textures/caixa1.jpeg");      // textura da caixa
+    LoadTextureImage("../../data/textures/caixa2.jpeg");      // textura da caixa
+    LoadTextureImage("../../data/textures/caixa3.jpeg");      // textura da caixa
+    LoadTextureImage("../../data/textures/caixa4.jpeg");      // textura da caixa
+    LoadTextureImage("../../data/textures/caixa5.jpeg");      // textura da caixa
 
     // Carregamos os shaders de vértices e de fragmentos que serão utilizados
     // para renderização. Veja slides 217-219 do documento "Aula_03_Rendering_Pipeline_Grafico.pdf".
@@ -379,6 +390,10 @@ int main(int argc, char* argv[])
     ComputeNormals(&cubemodel);
     BuildTrianglesAndAddToVirtualScene(&cubemodel);
 
+    ObjModel caixamodel("../../data/obj/caixa.obj");
+    ComputeNormals(&caixamodel);
+    BuildTrianglesAndAddToVirtualScene(&caixamodel);
+
 
     if ( argc > 1 )
     {
@@ -414,8 +429,13 @@ int main(int argc, char* argv[])
 #define DOOR   7
 #define MESA   8
 #define BOLA   9
-#define CUBE  10
-#define PAPEL 11
+#define CUBE   10
+#define PAPEL  11
+#define CAIXA1 12
+#define CAIXA2 13
+#define CAIXA3 14
+#define CAIXA4 15
+#define CAIXA5 16
 
 
 
@@ -424,7 +444,13 @@ int main(int argc, char* argv[])
     double tAgora;
     float deltaT;
     glm::vec4 cameraMov;
-    camera_position_c = glm::vec4(3.0f, 2.0f, 5.0f, 1.0f);
+    camera_position_c = glm::vec4(3.0f, 2.0f, 5.0f, 1.0f); // seto a posição inicial
+    // seto o deslocamento inicial das caixas em 0
+    p_inicial_caixa1 = glm::vec3(0,0,0);
+    p_inicial_caixa2 = glm::vec3(0,0,0);
+    p_inicial_caixa3 = glm::vec3(0,0,0);
+    p_inicial_caixa4 = glm::vec3(0,0,0);
+    p_inicial_caixa5 = glm::vec3(0,0,0);
 
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
@@ -469,9 +495,11 @@ int main(int argc, char* argv[])
         float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
 
-          canMove = true;
+        canMove = true;
+
+        /// TESTE DE COLISAO
         //Calculamos se a camera pode, de fato, se mover e não vai colidir com nada
-        for(int i=0; i<sceneVector.size(); i++){
+        for(int i=0; (unsigned int)i<sceneVector.size(); i++){
             glm::vec4 bbox_max =  sceneVector[i].model * glm::vec4(g_VirtualScene[sceneVector[i].name].bbox_max.x, g_VirtualScene[sceneVector[i].name].bbox_max.y,
                                            g_VirtualScene[sceneVector[i].name].bbox_max.z, 1.0f);
             glm::vec4 bbox_min =   sceneVector[i].model * glm::vec4(g_VirtualScene[sceneVector[i].name].bbox_min.x, g_VirtualScene[sceneVector[i].name].bbox_min.y,
@@ -507,6 +535,8 @@ int main(int argc, char* argv[])
             }
 
         }
+        /// FIM TESTE DE COLISAO
+
         tAnterior = tAgora;
 
 
@@ -544,9 +574,8 @@ int main(int argc, char* argv[])
         {
             // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
             // Veja slides 172-182 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
-            //!!!!!!!!!!!!saporra vai ficar travadona, n sei como mudar!!!!!!!!!!!!!!!!!!!!!!!!
-            camera_position_c  = glm::vec4(x+9.0f,2.0f,z+1.50f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-            glm::vec4 camera_lookat_l  = glm::vec4(9.0f,0.7f,1.50f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            camera_position_c  = glm::vec4(x+8.0f,2.0f,z+1.50f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            glm::vec4 camera_lookat_l  = glm::vec4(8.0f,0.7f,1.50f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = camera_lookat_l - camera_position_c;// Vetor "view", sentido para onde a câmera está virad
 
         }
@@ -715,6 +744,12 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "MesaTex"), 5);
     glUniform1i(glGetUniformLocation(program_id, "BolaTex"), 6);
     glUniform1i(glGetUniformLocation(program_id, "CubeTex"), 7);
+    glUniform1i(glGetUniformLocation(program_id, "Caixa1Tex"), 8);
+    glUniform1i(glGetUniformLocation(program_id, "Caixa2Tex"), 9);
+    glUniform1i(glGetUniformLocation(program_id, "Caixa3Tex"), 10);
+    glUniform1i(glGetUniformLocation(program_id, "Caixa4Tex"), 11);
+    glUniform1i(glGetUniformLocation(program_id, "Caixa5Tex"), 12);
+
     glUseProgram(0);
 }
 
@@ -1338,6 +1373,8 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     {
         g_UsePerspectiveProjection = true;
         camera_position_c.y = 2.0f;
+        camera_position_c.x = 6.0f;
+        camera_position_c.z = 1.50f;
     }
 
     if (key == GLFW_KEY_L && action == GLFW_PRESS)
@@ -1701,7 +1738,7 @@ void buildFirstScene()
 
     //bola
 
-    Objeto.model = Matrix_Translate(9.0f,0.7f,1.50f)
+    Objeto.model = Matrix_Translate(8.0f,0.7f,1.50f)
                    * Matrix_Scale(0.2f, 0.2f,0.2f);
     strcpy(Objeto.name,"bola");
     Objeto.nameId = BOLA;
@@ -1712,10 +1749,39 @@ void buildFirstScene()
 
     Objeto.model = Matrix_Translate(-7.50f,-0.3f,-5.50f)
                     * Matrix_Scale(0.7f, 0.7f,0.7f)
-                    * Matrix_Rotate_Y(1.57f);
+                    * Matrix_Rotate_Y(1.57f)
+                    * Matrix_Rotate_X(g_AngleX)
+                    * Matrix_Rotate_Y(g_AngleY)
+                    * Matrix_Rotate_Z(g_AngleZ);
     strcpy(Objeto.name,"cube");
     Objeto.nameId = CUBE;
     sceneVector.push_back(Objeto);
+
+    Objeto.model = Matrix_Translate(p_inicial_caixa1.x + 6.0f, p_inicial_caixa1.y  -1.0f, p_inicial_caixa1.z + 19.50f);
+    strcpy(Objeto.name,"caixa");
+    Objeto.nameId = CAIXA1;
+    sceneVector.push_back(Objeto);
+
+    Objeto.model = Matrix_Translate(p_inicial_caixa2.x  -9.0f,p_inicial_caixa2.y  -1.0f,p_inicial_caixa2.z + 0.0f) * Matrix_Rotate_Y(-1.57f);
+    strcpy(Objeto.name,"caixa");
+    Objeto.nameId = CAIXA2;
+    sceneVector.push_back(Objeto);
+
+    Objeto.model = Matrix_Translate(p_inicial_caixa3.x + 9.0f,p_inicial_caixa3.y  -1.0f, p_inicial_caixa3.z  -3.50f) * Matrix_Rotate_Y(1.57f);
+    strcpy(Objeto.name,"caixa");
+    Objeto.nameId = CAIXA3;
+    sceneVector.push_back(Objeto);
+
+    Objeto.model = Matrix_Translate(p_inicial_caixa4.x  -7.50f,p_inicial_caixa4.y -1.0f,p_inicial_caixa4.z -19.50f) * Matrix_Rotate_Y(3.1415f);
+    strcpy(Objeto.name,"caixa");
+    Objeto.nameId = CAIXA4;
+    sceneVector.push_back(Objeto);
+
+    Objeto.model = Matrix_Translate(p_inicial_caixa5.x + 9.0f, p_inicial_caixa5.y + 0.50f ,p_inicial_caixa5.z + 2.0f) * Matrix_Rotate_Y(-1.57);
+    strcpy(Objeto.name,"caixa");
+    Objeto.nameId = CAIXA5;
+    sceneVector.push_back(Objeto);
+
 
 
     // constrói o quarto 20x10 (todos quartos tem 4 de altura)
@@ -1818,13 +1884,13 @@ bool TestRayOBBIntersection(
         {
             float t1 = (e+aabb_min.z)/f; // Intersection with the "left" plane
             float t2 = (e+aabb_max.z)/f; // Intersection with the "right" plane
-
+            float w;
             if (t1>t2)
-                float w=t1;
+                 w=t1;
 
             if (t1>t2)
             {
-                float w=t1;
+                 w=t1;
                 t1=t2;
                 t2=w; // swap t1 and t2
             }
@@ -1846,8 +1912,6 @@ bool TestRayOBBIntersection(
 
 
 }
-// set makeprg=cd\ ..\ &&\ make\ run\ >/dev/null
-// vim: set spell spelllang=pt_br :
 
 // Função que carrega uma imagem para ser utilizada como textura
 void LoadTextureImage(const char* filename)
@@ -1896,35 +1960,16 @@ void movimentacaoCamera(glm::vec4 *vec)
 {
     float g_FreeCamX=0;
     float g_FreeCamz=0;
-    /// ////////////////////////////////////////////////////////
-    // as teclas WASD são o que podem mudar o CENTRO da camera LIVRE
-    // ir na direção W ou S é aproximar da origem (centro da camera) ou afastar do centro da camera
-    // portanto, um delta de velocidade * a coordenada do centro da camera
     if(sPressed)
     {
         g_FreeCamX += 0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
-        // g_FreeCamy += 0.05f*sin(g_CameraPhi);
         g_FreeCamz += 0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
     }
     if(wPressed)
     {
         g_FreeCamX += -0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
-        // g_FreeCamy -= 0.05f*sin(g_CameraPhi);
         g_FreeCamz += -0.05f*cos(g_CameraPhi)*cos(g_CameraTheta);
     }
-    // mexer para esquerda ou para direita é um deslocamento na direção do vetor u das coordenadas da CAMERA
-    // o vetor u é dado pelo produto vetorial (cross product) de -view com up_vector.
-    // o vetor view (como definido abaixo) é as coordenadas do centro da camera negadas, então:
-    // | -Cx |   | 0 |
-    // | -Cy | X | 1 |
-    // | -Cz |   | 0 |
-    // o que resulta em
-    // | -Cy*0 + Cz*1 |     | +Cz |
-    // | -Cz*0 + Cx*0 | ==  |  0  |
-    // | -Cx*1 + Cy*0 |     | -Cx |
-    // portanto, um deslocamento para esquerda seria somar um na coordenada X um +Cz, que é definido por
-    // cos(g_CameraPhi) * sin (g_CameraTheta) e na coordenada Z um -Cx, definido por cos(cameraPhi)*sin(cameraTheta)
-    // multiplicado por um deslocamento determinando a "velocidade"
     if(dPressed)
     {
         g_FreeCamz += -0.05f*cos(g_CameraPhi)*sin(g_CameraTheta);
@@ -2007,11 +2052,14 @@ void bolaPapel(float x, float y, float z)
         glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
 
         // coordenadas minimas e máximas da esfera
-        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
-        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
+        glm::vec4 aabb_min = glm::vec4(-1.0f,-1.0f,-1.0f,1.0f);
+        glm::vec4 aabb_max = glm::vec4(1.0f,1.0f,1.0f,1.0f);
 
         // transformações da esfera
         glm::mat4 target_model = sceneVector[6].model; // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+
+        aabb_min = aabb_min * target_model;
+        aabb_max = aabb_max * target_model;
 
         float intersection_distance;
         //testa se tocou o botão

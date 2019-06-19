@@ -27,7 +27,14 @@ uniform float timeCounter;
 #define DOOR   7
 #define MESA   8
 #define BOLA   9
-#define CUBE  10
+#define CUBE   10
+#define PAPEL  11
+#define CAIXA1 12
+#define CAIXA2 13
+#define CAIXA3 14
+#define CAIXA4 15
+#define CAIXA5 16
+
 uniform int object_id;
 
 // Parâmetros da axis-aligned bounding box (AABB) do modelo
@@ -44,6 +51,11 @@ uniform sampler2D FabricTex;
 uniform sampler2D MesaTex;
 uniform sampler2D BolaTex;
 uniform sampler2D CubeTex;
+uniform sampler2D Caixa1Tex;
+uniform sampler2D Caixa2Tex;
+uniform sampler2D Caixa3Tex;
+uniform sampler2D Caixa4Tex;
+uniform sampler2D Caixa5Tex;
 
 // Constantes
 #define M_PI   3.14159265358979323846
@@ -89,6 +101,9 @@ void main()
 
     vec4 r = -l + 2*n*(dot(n,l)); //  vetor de reflexão especular ideal
 
+    // vetor H do modelo de blinn-phong
+    vec4 h = (v+l)/length(v+l);
+
     // Parâmetros que definem as propriedades espectrais da superfície
     vec3 Kd; // Refletância difusa
     vec3 Ks; // Refletância especular
@@ -131,7 +146,6 @@ void main()
 
 
     }
-
     else if ( object_id == PLANE )
     {
         // Coordenadas de textura do plano, obtidas do arquivo OBJ.
@@ -189,9 +203,64 @@ void main()
         // a refletancia difusa é da imagem agora, com as coordenadas de textura
         Kd = (texture(CubeTex, vec2(U,V)).rgb);
         // Equação de Iluminação
-        Ks = vec3(0.0,0.0,0.0);
+        Ks = vec3(0.5,0.5,0.5);
         Ka = Kd;
-        q = 1.0f;
+        q = 50.0f;
+    }
+    else if(object_id == CAIXA1)
+    {
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(Caixa1Tex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0,0,0);
+        Ka = Kd;
+        q = 0.0f;
+    }
+    else if(object_id == CAIXA2)
+    {
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(Caixa2Tex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0,0,0);
+        Ka = Kd;
+        q = 0.0f;
+    }
+    else if(object_id == CAIXA3)
+    {
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(Caixa3Tex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0,0,0);
+        Ka = Kd;
+        q = 0.0f;
+    }
+    else if(object_id == CAIXA4)
+    {
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(Caixa4Tex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0,0,0);
+        Ka = Kd;
+        q = 0.0f;
+    }
+    else if(object_id == CAIXA5)
+    {
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(Caixa5Tex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0,0,0);
+        Ka = Kd;
+        q = 0.0f;
     }
     else // Objeto desconhecido = preto
     {
@@ -208,11 +277,12 @@ void main()
     // Espectro da luz ambiente
     vec3 Ia = vec3(0.2f,0.2f,0.2f); //  espectro da luz ambiente
     vec3 Iafundo = vec3(0.2f,0.2f,0.2f);
-
     vec3 lambert_diffuse_term;
     vec3 ambient_term;
     vec3 phong_specular_term;
-
+    vec3 blinn_phong_specular_term;
+    vec3 contribuicaoLanterna;
+    vec3 contribuicaoInterruptor;
 
     if(lightsOn == 0 && interruptor == 0) // lanterna ligada (luzes desligadas)
     {
@@ -226,14 +296,24 @@ void main()
             ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
             // Termo especular utilizando o modelo de iluminação de Phong
             phong_specular_term  = Ks*I*max(0,pow(dot(r,spotlightv), q)); // PREENCH AQUI o termo especular de Phong
-            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
+            contribuicaoLanterna = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
+            if(object_id == CUBE)
+            {
+                blinn_phong_specular_term = Ks * I *max(0,pow(dot(n,h), q));
+                contribuicaoLanterna = (lambert_diffuse_term + ambient_term + blinn_phong_specular_term)*fatt;
+            }
         }
         else
         {
             lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l));
             ambient_term = Ka*Iafundo;
             phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v), q));
-            color = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
+            contribuicaoLanterna = (lambert_diffuse_term + ambient_term + phong_specular_term)*fatt;
+            if(object_id == CUBE)
+            {
+                blinn_phong_specular_term = Ks * Ifundo *max(0,pow(dot(n,h), q));
+                contribuicaoLanterna = (lambert_diffuse_term + ambient_term + blinn_phong_specular_term)*fatt;
+            }
         }
     }
 
@@ -245,7 +325,12 @@ void main()
         ambient_term = Ka*Ia; // termo ambiente
         // Termo especular utilizando o modelo de iluminação de Phong
         phong_specular_term  = Ks*I*max(0,pow(dot(r,v), q)); // termo especular de Phong
-        color = lambert_diffuse_term + ambient_term + phong_specular_term;
+        contribuicaoInterruptor = lambert_diffuse_term + ambient_term + phong_specular_term;
+        if(object_id == CUBE)
+        {
+            blinn_phong_specular_term = Ks * I *max(0,pow(dot(n,h), q));
+            contribuicaoInterruptor = (lambert_diffuse_term + ambient_term + blinn_phong_specular_term);
+        }
 
     }
 
@@ -255,18 +340,24 @@ void main()
         lambert_diffuse_term = Kd * Ifundo * max(0, dot(n,l));
         ambient_term = Ka*Iafundo;
         phong_specular_term  = Ks*Ifundo*max(0,pow(dot(r,v), q));
-        color = (lambert_diffuse_term + ambient_term + phong_specular_term)*0.002;
+        contribuicaoInterruptor = (lambert_diffuse_term + ambient_term + phong_specular_term)*0.002;
+        if(object_id == CUBE)
+        {
+            blinn_phong_specular_term = Ks * Ifundo *max(0,pow(dot(n,h), q));
+            contribuicaoInterruptor = (lambert_diffuse_term + ambient_term + blinn_phong_specular_term)*0.002;
+        }
     }
 
 
+    // se é o switch (ele ta iluminado com gourad (orientado a vertice)
     if(object_id == SWITCH )
     {
-        if(lightsOn==1 && interruptor == 0)
-            color = cor_v*0.001;
+        if(interruptor == 0)
+            contribuicaoInterruptor = cor_v*0.001;
         else
-            color = cor_v;
+            contribuicaoInterruptor= cor_v;
     }
-
+    color = contribuicaoInterruptor + contribuicaoLanterna;
     // Cor final com correção gamma, considerando monitor sRGB.
     // Veja https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=751281772#Windows.2C_Mac.2C_sRGB_and_TV.2Fvideo_standard_gammas
     color = pow(color, vec3(1.0,1.0,1.0)/2.2);
