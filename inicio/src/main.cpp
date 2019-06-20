@@ -149,6 +149,7 @@ void bolaPapel(float, float, float);
 void abrePorta (float, float, float);
 void testaCubo(float, float, float);
 void testaCaixas(float, float, float);
+int testa_ordem();
 bool collisionCheckPointBox(glm::vec4, glm::vec4, glm::vec4);
 
 
@@ -236,7 +237,7 @@ bool teste_interruptor=false;
 
 //!!!!!!!!!!!!!!!!!!!!! VARIAVEIS DO PAPEL!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 GLint paper_uniform;
-int paper=1;
+int paper;
 bool teste_paper=false;
 //!!!!!!!!!!!!!!!!!!!!! VARIAVEIS DA PORTA!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 GLint door_uniform;
@@ -251,6 +252,7 @@ int moveCaixa1 =0;
 int moveCaixa2 =0;
 int moveCaixa3 =0;
 int moveCaixa4 =0;
+bool isMoving=false;
 
 float rotacaoCaixa2=0;
 float rotacaoCaixa3=0;
@@ -263,6 +265,10 @@ double t=0;
 double tAnterior;
 double tAgora;
 float deltaT;
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!VARIAVEIS DO JOGO !!!!!!!!!!!!!!!!!!!!!!!!!!!
+int ordemCaixas=0;
+std::vector<int> ordem (4,0);
+int posVetor=0;
 
 int lightsOn;
 
@@ -280,7 +286,7 @@ int main(int argc, char* argv[])
     // seed do random
     srand(time(NULL));
     interruptor=0;
-    paper=1;
+    paper=0;
     lightsOn=0;
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
@@ -604,6 +610,13 @@ int main(int argc, char* argv[])
         bolaPapel(x,y,z);
         abrePorta(x,y,z);
         testaCaixas(x,y,z);
+        if (!isMoving && posVetor==4)
+        {
+            posVetor=0;
+            ordemCaixas = testa_ordem();
+        }
+        if (ordemCaixas)
+            door_locked = 0;
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
@@ -1803,7 +1816,6 @@ void buildFirstScene()
         strcpy(Objeto.name,"caixa");
         Objeto.nameId = CAIXA1;
         sceneVector.push_back(Objeto);
-        printf("%f\t%f\t%f\n", centro_caixa1.x,centro_caixa1.y,centro_caixa1.z);
 
         if (centro_caixa1.x <=-0.9999f)
         {
@@ -1813,6 +1825,7 @@ void buildFirstScene()
             p_inicial_caixa1.z = 1.5f;
             auxCaixa=0;
             flagCaixa=0;
+            isMoving=false;
         }
     }
     else
@@ -1862,6 +1875,7 @@ void buildFirstScene()
             p_inicial_caixa2.z = 1.5f;
             auxCaixa=0;
             flagCaixa=0;
+            isMoving=false;
         }
 
     }
@@ -1911,6 +1925,7 @@ void buildFirstScene()
             p_inicial_caixa3.z = 1.5f;
             auxCaixa=0;
             flagCaixa=0;
+            isMoving=false;
         }
     }
     else
@@ -1959,6 +1974,7 @@ void buildFirstScene()
             p_inicial_caixa4.z = 1.5f;
             auxCaixa=0;
             flagCaixa=0;
+            isMoving=false;
         }
     }
     else
@@ -2269,7 +2285,7 @@ void bolaPapel(float x, float y, float z)
             if(paper==0&&intersection_distance<=5.0f)
             {
                 paper=1;
-                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-on.wav", NULL, SND_FILENAME | SND_ASYNC);
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\paper_open.wav", NULL, SND_FILENAME | SND_ASYNC);
                 if(rand()%20 == 0)
                     PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\ghast2.wav", NULL, SND_FILENAME | SND_ASYNC);
 
@@ -2277,7 +2293,7 @@ void bolaPapel(float x, float y, float z)
             else if (intersection_distance<=5.0f)
             {
                 paper=0;
-                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
+                //PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\switch-off.wav", NULL, SND_FILENAME | SND_ASYNC);
             }
 
             //glUniform1i(interruptor_uniform,interruptor);
@@ -2361,7 +2377,12 @@ void testaCaixas(float x, float y, float z)
                 ))
         {
             if (moveCaixa1 ==0 && intersection_distance<=5.0f)
+            {
                 moveCaixa1=1;
+                isMoving=true;
+                ordem[posVetor]=1;
+                posVetor++;
+            }
         }
 
         target_model = sceneVector[9].model; //testa segunda caixa
@@ -2378,7 +2399,12 @@ void testaCaixas(float x, float y, float z)
                 ))
         {
             if (moveCaixa2 ==0 && intersection_distance<=5.0f)
+            {
                 moveCaixa2=1;
+                isMoving=true;
+                ordem[posVetor]=2;
+                posVetor++;
+            }
         }
 
         target_model = sceneVector[10].model; //testa terceira caixa
@@ -2395,7 +2421,12 @@ void testaCaixas(float x, float y, float z)
                 ))
         {
             if (moveCaixa3 ==0 && intersection_distance<=5.0f)
+            {
                 moveCaixa3=1;
+                isMoving=true;
+                ordem[posVetor]=3;
+                posVetor++;
+            }
         }
 
         target_model = sceneVector[11].model; //testa quarta caixa
@@ -2412,7 +2443,12 @@ void testaCaixas(float x, float y, float z)
                 ))
         {
             if (moveCaixa4 ==0 && intersection_distance<=5.0f)
+            {
                 moveCaixa4=1;
+                isMoving=true;
+                ordem[posVetor]=4;
+                posVetor++;
+            }
         }
         teste_caixas=false;
     }
@@ -2479,6 +2515,13 @@ void buildRoom(float largura, float comprimento){
 
 }
 
+int testa_ordem()
+{
+    if (ordem[0] ==2 && ordem[1]==3 &&ordem[2]==1 && ordem[3]==4)
+        return 1;
+    else
+        return 0;
+}
 
 
 bool collisionCheckPointBox(glm::vec4 point, glm::vec4 bboxMin, glm::vec4 bboxMax)
