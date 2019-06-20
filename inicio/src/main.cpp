@@ -149,7 +149,7 @@ void bolaPapel(float, float, float);
 void abrePorta (float, float, float);
 void testaCubo(float, float, float);
 void testaCaixas(float, float, float);
-int testa_ordem();
+void testa_ordem();
 bool collisionCheckPointBox(glm::vec4, glm::vec4, glm::vec4);
 
 
@@ -161,6 +161,7 @@ glm::vec3 p_inicial_caixa2;
 glm::vec3 p_inicial_caixa3;
 glm::vec3 p_inicial_caixa4;
 glm::vec3 p_inicial_caixa5;
+glm::vec3 p_inicial_zumbi;
 
 // Definimos uma estrutura que armazenará dados necessários para renderizar
 // cada objeto da cena virtual.
@@ -252,21 +253,21 @@ int moveCaixa1 =0;
 int moveCaixa2 =0;
 int moveCaixa3 =0;
 int moveCaixa4 =0;
+int moveZumbi=0;
 bool isMoving=false;
 
 float rotacaoCaixa2=0;
 float rotacaoCaixa3=0;
 float rotacaoCaixa4=0;
 
-int flagCaixa=0;
-float auxCaixa;
+int flagBezier=0;
+float auxBezier;
 double t=0;
 //!!!!!!!!!!!!!!!!!!!!! VARIAVEIS USADAS P TEMPO !!!!!!!!!!!!!!!!!!!!!!!!!!!
 double tAnterior;
 double tAgora;
 float deltaT;
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!VARIAVEIS DO JOGO !!!!!!!!!!!!!!!!!!!!!!!!!!!
-int ordemCaixas=0;
 std::vector<int> ordem (4,0);
 int posVetor=0;
 
@@ -474,6 +475,7 @@ int main(int argc, char* argv[])
     p_inicial_caixa3 = glm::vec3(9.0f,-1.0f,-3.5f);
     p_inicial_caixa4 = glm::vec3(-7.5f,-1.0f,-19.5f);
     p_inicial_caixa5 = glm::vec3(9.0f,0.5f,2.0f);
+    p_inicial_zumbi  = glm::vec3(-6.0f,1.5f,-15.0f);
 
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
@@ -613,10 +615,8 @@ int main(int argc, char* argv[])
         if (!isMoving && posVetor==4)
         {
             posVetor=0;
-            ordemCaixas = testa_ordem();
+            testa_ordem();
         }
-        if (ordemCaixas)
-            door_locked = 0;
         if(moveCaixa1==-1 && moveCaixa2==-1 && moveCaixa3==-1 && moveCaixa4==-1)
         {
             moveCaixa1=0;
@@ -624,8 +624,8 @@ int main(int argc, char* argv[])
             moveCaixa3=0;
             moveCaixa4=0;
             isMoving=false;
-            auxCaixa=0;
-            flagCaixa=0;
+            auxBezier=0;
+            flagBezier=0;
         }
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
@@ -1712,11 +1712,96 @@ void buildFirstScene()
     struct sceneHelper Objeto;
 
     // aqui é o desenho do zombie
-    Objeto.model = Matrix_Translate(-1.0f,1.5f,-16.0f)
-                   * Matrix_Scale(3.0f,3.0f,3.0f);
-    strcpy(Objeto.name,"zombie");
-    Objeto.nameId = ZOMBIE;
-    sceneVector.push_back(Objeto);
+    if (moveZumbi == 1)
+    {
+        if (flagBezier==0)
+        {
+            auxBezier=glfwGetTime();
+            flagBezier=1;
+        }
+        t = (glfwGetTime() - auxBezier)/2;
+        t = sin(t);
+
+
+        //pontos de controle
+        glm::vec4 p1  = glm::vec4(p_inicial_zumbi.x,       p_inicial_zumbi.y,    p_inicial_zumbi.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_zumbi.x +2.0f, p_inicial_zumbi.y,    p_inicial_zumbi.z, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_zumbi.x +6.0f, p_inicial_zumbi.y,    p_inicial_zumbi.z, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_zumbi.x +10.0f,p_inicial_zumbi.y,    p_inicial_zumbi.z, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_zumbi  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        Objeto.model = Matrix_Translate(centro_zumbi.x, centro_zumbi.y, centro_zumbi.z)
+                        *Matrix_Scale(3.0f,3.0f,3.0f);
+        strcpy(Objeto.name,"zombie");
+        Objeto.nameId = ZOMBIE;
+        sceneVector.push_back(Objeto);
+
+        if (centro_zumbi.x >=3.9999f)
+        {
+            moveZumbi=-1;
+            p_inicial_zumbi.x = 4.0f;
+            p_inicial_zumbi.y = 1.5f;
+            p_inicial_zumbi.z = -15.0f;
+            auxBezier=0;
+            flagBezier=0;
+            isMoving=false;
+        }
+    }
+    else if (moveZumbi == 2)
+    {
+        if (flagBezier==0)
+        {
+            auxBezier=glfwGetTime();
+            flagBezier=1;
+        }
+        t = (glfwGetTime() - auxBezier)/2;
+        t = sin(t);
+
+
+        //pontos de controle
+        glm::vec4 p1  = glm::vec4(p_inicial_zumbi.x,       p_inicial_zumbi.y,    p_inicial_zumbi.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_zumbi.x -2.0f, p_inicial_zumbi.y,    p_inicial_zumbi.z, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_zumbi.x -6.0f, p_inicial_zumbi.y,    p_inicial_zumbi.z, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_zumbi.x -10.0f,p_inicial_zumbi.y,    p_inicial_zumbi.z, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_zumbi  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        Objeto.model = Matrix_Translate(centro_zumbi.x, centro_zumbi.y, centro_zumbi.z)
+                        *Matrix_Scale(3.0f,3.0f,3.0f);
+        strcpy(Objeto.name,"zombie");
+        Objeto.nameId = ZOMBIE;
+        sceneVector.push_back(Objeto);
+
+        if (centro_zumbi.x <=-5.9999f)
+        {
+            moveZumbi=0;
+            p_inicial_zumbi.x = -6.0f;
+            p_inicial_zumbi.y = 1.5f;
+            p_inicial_zumbi.z = -15.0f;
+            auxBezier=0;
+            flagBezier=0;
+            isMoving=false;
+        }
+    }
+    else
+    {
+        Objeto.model = Matrix_Translate(p_inicial_zumbi.x, p_inicial_zumbi.y, p_inicial_zumbi.z)
+                       * Matrix_Scale(3.0f,3.0f,3.0f);
+        strcpy(Objeto.name,"zombie");
+        Objeto.nameId = ZOMBIE;
+        sceneVector.push_back(Objeto);
+    }
 
     //desenho da porta
     Objeto.model = Matrix_Translate(-10.0f,2.50f,12.50f)
@@ -1800,12 +1885,12 @@ void buildFirstScene()
     //caixa 1
     if (moveCaixa1 == 1)
     {
-        if (flagCaixa==0)
+        if (flagBezier==0)
         {
-            auxCaixa=glfwGetTime();
-            flagCaixa=1;
+            auxBezier=glfwGetTime();
+            flagBezier=1;
         }
-        t = (glfwGetTime() - auxCaixa)/2;
+        t = (glfwGetTime() - auxBezier)/2;
         t = sin(t);
 
 
@@ -1833,20 +1918,20 @@ void buildFirstScene()
             p_inicial_caixa1.x = -1.0f;
             p_inicial_caixa1.y = 4.7f;
             p_inicial_caixa1.z = 1.5f;
-            auxCaixa=0;
-            flagCaixa=0;
+            auxBezier=0;
+            flagBezier=0;
             isMoving=false;
         }
     }
 
     else if (moveCaixa1 == 2)
     {
-        if (flagCaixa==0)
+        if (flagBezier==0)
         {
-            auxCaixa=glfwGetTime();
-            flagCaixa=1;
+            auxBezier=glfwGetTime();
+            flagBezier=1;
         }
-        t = (glfwGetTime() - auxCaixa)/2;
+        t = (glfwGetTime() - auxBezier)/2;
         t = sin(t);
 
 
@@ -1887,12 +1972,12 @@ void buildFirstScene()
     //caixa 2
     if(moveCaixa2==1)
     {
-        if (flagCaixa==0)
+        if (flagBezier==0)
         {
-            auxCaixa=glfwGetTime();
-            flagCaixa=1;
+            auxBezier=glfwGetTime();
+            flagBezier=1;
         }
-        t = (glfwGetTime() - auxCaixa)/2;
+        t = (glfwGetTime() - auxBezier)/2;
         t = sin(t);
 
         glm::vec4 p1  = glm::vec4(p_inicial_caixa2.x,       p_inicial_caixa2.y,         p_inicial_caixa2.z, 1.0f);
@@ -1922,8 +2007,8 @@ void buildFirstScene()
             p_inicial_caixa2.y = 2.95f;
             p_inicial_caixa2.z = 1.5f;
             rotacaoCaixa2=1.57f;
-            auxCaixa=0;
-            flagCaixa=0;
+            auxBezier=0;
+            flagBezier=0;
             isMoving=false;
         }
 
@@ -1931,12 +2016,12 @@ void buildFirstScene()
 
     else if(moveCaixa2==2)
     {
-        if (flagCaixa==0)
+        if (flagBezier==0)
         {
-            auxCaixa=glfwGetTime();
-            flagCaixa=1;
+            auxBezier=glfwGetTime();
+            flagBezier=1;
         }
-        t = (glfwGetTime() - auxCaixa)/2;
+        t = (glfwGetTime() - auxBezier)/2;
         t = sin(t);
 
         glm::vec4 p1  = glm::vec4(p_inicial_caixa2.x,       p_inicial_caixa2.y,         p_inicial_caixa2.z, 1.0f);
@@ -1979,12 +2064,12 @@ void buildFirstScene()
     //caixa 3
     if(moveCaixa3==1)
     {
-        if (flagCaixa==0)
+        if (flagBezier==0)
         {
-            auxCaixa=glfwGetTime();
-            flagCaixa=1;
+            auxBezier=glfwGetTime();
+            flagBezier=1;
         }
-        t = (glfwGetTime() - auxCaixa)/2;
+        t = (glfwGetTime() - auxBezier)/2;
         t = sin(t);
 
         glm::vec4 p1  = glm::vec4(p_inicial_caixa3.x,       p_inicial_caixa3.y,         p_inicial_caixa3.z, 1.0f);
@@ -2013,19 +2098,19 @@ void buildFirstScene()
             p_inicial_caixa3.y = 1.3f;
             p_inicial_caixa3.z = 1.5f;
             rotacaoCaixa3=-1.57f;
-            auxCaixa=0;
-            flagCaixa=0;
+            auxBezier=0;
+            flagBezier=0;
             isMoving=false;
         }
     }
     else if(moveCaixa3==2)
     {
-        if (flagCaixa==0)
+        if (flagBezier==0)
         {
-            auxCaixa=glfwGetTime();
-            flagCaixa=1;
+            auxBezier=glfwGetTime();
+            flagBezier=1;
         }
-        t = (glfwGetTime() - auxCaixa)/2;
+        t = (glfwGetTime() - auxBezier)/2;
         t = sin(t);
 
         glm::vec4 p1  = glm::vec4(p_inicial_caixa3.x,       p_inicial_caixa3.y,         p_inicial_caixa3.z, 1.0f);
@@ -2067,12 +2152,12 @@ void buildFirstScene()
      //caixa 4
     if(moveCaixa4==1)
     {
-        if (flagCaixa==0)
+        if (flagBezier==0)
         {
-            auxCaixa=glfwGetTime();
-            flagCaixa=1;
+            auxBezier=glfwGetTime();
+            flagBezier=1;
         }
-        t = (glfwGetTime() - auxCaixa)/2;
+        t = (glfwGetTime() - auxBezier)/2;
         t = sin(t);
 
         glm::vec4 p1  = glm::vec4(p_inicial_caixa4.x,       p_inicial_caixa4.y,         p_inicial_caixa4.z, 1.0f);
@@ -2101,19 +2186,19 @@ void buildFirstScene()
             p_inicial_caixa4.y = -0.4f;
             p_inicial_caixa4.z = 1.5f;
             rotacaoCaixa4=-3.1415f;
-            auxCaixa=0;
-            flagCaixa=0;
+            auxBezier=0;
+            flagBezier=0;
             isMoving=false;
         }
     }
     else if(moveCaixa4==2)
     {
-        if (flagCaixa==0)
+        if (flagBezier==0)
         {
-            auxCaixa=glfwGetTime();
-            flagCaixa=1;
+            auxBezier=glfwGetTime();
+            flagBezier=1;
         }
-        t = (glfwGetTime() - auxCaixa)/2;
+        t = (glfwGetTime() - auxBezier)/2;
         t = sin(t);
 
         glm::vec4 p1  = glm::vec4(p_inicial_caixa4.x,       p_inicial_caixa4.y,         p_inicial_caixa4.z, 1.0f);
@@ -2505,14 +2590,11 @@ void abrePorta (float x, float y, float z)
             if(door_locked==1&&intersection_distance<=5.0f)
             {
                 PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\locked-door.wav", NULL, SND_FILENAME | SND_ASYNC);
-
             }
-           //!!!!!!!!!!!!!!!!PORTA DESTRANCADA, IR P/ OUTRO QUARTO
-           /*
-            else if (intersection_distance<=5.0f)
+            else if(intersection_distance<=5.0f) //!!!!!!!!!!!!!!!!PORTA DESTRANCADA, ACABOU
             {
-                //
-            }*/
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\door-open.wav", NULL, SND_FILENAME | SND_ASYNC);
+            }
         }
     }
 };
@@ -2529,8 +2611,34 @@ void testaCaixas(float x, float y, float z)
         glm::vec4 aabb_max = glm::vec4(1.0f,1.0f,1.0f,1.0f);
 
         float intersection_distance;
-        // transformações da esfera
-        glm::mat4 target_model = sceneVector[8].model; //testa primeira caixa
+        // transformações do obj
+
+        glm::mat4 target_model = sceneVector[0].model; //testa zumbi
+        aabb_min = aabb_min * target_model;
+        aabb_max = aabb_max * target_model;
+
+         if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+            if (moveZumbi ==0 && intersection_distance<=5.0f && isMoving==false)
+            {
+                moveZumbi=1;
+                isMoving=true;
+            }
+            else if (moveZumbi ==-1 && intersection_distance<=5.0f && isMoving==false)
+            {
+                moveZumbi=2;
+                isMoving=true;
+            }
+        }
+
+        target_model = sceneVector[8].model; //testa primeira caixa
         aabb_min = aabb_min * target_model;
         aabb_max = aabb_max * target_model;
 
@@ -2682,17 +2790,20 @@ void buildRoom(float largura, float comprimento){
 
 }
 
-int testa_ordem()
+void testa_ordem()
 {
     if (ordem[0] ==2 && ordem[1]==3 &&ordem[2]==1 && ordem[3]==4)
-        return 1;
+    {
+        PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\unlocked-door.wav", NULL, SND_FILENAME | SND_ASYNC);
+        door_locked=0;
+    }
     else
     {
+        PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\wrong.wav", NULL, SND_FILENAME | SND_ASYNC);
         moveCaixa1=2;
         moveCaixa2=2;
         moveCaixa3=2;
         moveCaixa4=2;
-        return 0;
     }
 }
 
