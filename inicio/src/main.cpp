@@ -148,6 +148,7 @@ void lightSwitch(float, float, float);
 void bolaPapel(float, float, float);
 void abrePorta (float, float, float);
 void testaCubo(float, float, float);
+void testaCaixas(float, float, float);
 bool collisionCheckPointBox(glm::vec4, glm::vec4, glm::vec4);
 
 
@@ -242,8 +243,26 @@ GLint door_uniform;
 int door_locked=1;
 bool teste_door=false;
 
-//!!!!!!!!!!!!!!!!!!!!! VARIAVEL P TESTE DO CUBO!!!!!!!!!!!!!!!!!!!!!!!!!!!
-bool lookAt_Cubo = false;
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEL P TESTE DAS CAIXAS!!!!!!!!!!!!!!!!!!!!!!!!!!!
+bool teste_caixas = false;
+
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEIS P CURVA BEZIER!!!!!!!!!!!!!!!!!!!!!!!!!!!
+int moveCaixa1 =0;
+int moveCaixa2 =0;
+int moveCaixa3 =0;
+int moveCaixa4 =0;
+
+float rotacaoCaixa2=0;
+float rotacaoCaixa3=0;
+float rotacaoCaixa4=0;
+
+int flagCaixa=0;
+float auxCaixa;
+double t=0;
+//!!!!!!!!!!!!!!!!!!!!! VARIAVEIS USADAS P TEMPO !!!!!!!!!!!!!!!!!!!!!!!!!!!
+double tAnterior;
+double tAgora;
+float deltaT;
 
 int lightsOn;
 
@@ -260,9 +279,9 @@ int main(int argc, char* argv[])
 {
     // seed do random
     srand(time(NULL));
-    interruptor=1;
+    interruptor=0;
     paper=1;
-    lightsOn=1;
+    lightsOn=0;
     // Inicializamos a biblioteca GLFW, utilizada para criar uma janela do
     // sistema operacional, onde poderemos renderizar com OpenGL.
     int success = glfwInit();
@@ -440,17 +459,15 @@ int main(int argc, char* argv[])
 
 
     int sceneNumber = 1;
-    double tAnterior = glfwGetTime();
-    double tAgora;
-    float deltaT;
+    tAnterior = glfwGetTime();
     glm::vec4 cameraMov;
     camera_position_c = glm::vec4(3.0f, 2.0f, 5.0f, 1.0f); // seto a posição inicial
     // seto o deslocamento inicial das caixas em 0
-    p_inicial_caixa1 = glm::vec3(0,0,0);
-    p_inicial_caixa2 = glm::vec3(0,0,0);
-    p_inicial_caixa3 = glm::vec3(0,0,0);
-    p_inicial_caixa4 = glm::vec3(0,0,0);
-    p_inicial_caixa5 = glm::vec3(0,0,0);
+    p_inicial_caixa1 = glm::vec3(6.0f,-1.0f,19.5f);
+    p_inicial_caixa2 = glm::vec3(-9.0f,-1.0f,0.0f);
+    p_inicial_caixa3 = glm::vec3(9.0f,-1.0f,-3.5f);
+    p_inicial_caixa4 = glm::vec3(-7.5f,-1.0f,-19.5f);
+    p_inicial_caixa5 = glm::vec3(9.0f,0.5f,2.0f);
 
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
@@ -586,7 +603,7 @@ int main(int argc, char* argv[])
         lightSwitch(x,y,z);
         bolaPapel(x,y,z);
         abrePorta(x,y,z);
-        testaCubo(x,y,z);
+        testaCaixas(x,y,z);
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
@@ -1201,10 +1218,11 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         // variável abaixo para false.
         g_RightMouseButtonPressed = false;
 
-        //!!!!!!!!!!!!!!!!!!!!!!!!!TESTE INTERRUPTOR!!!!!!!!!!!!!!!!!!!!!
+        //!!!!!!!!!!!!!!!!!!!!!!!!!TESTE VARIAVEIS AUXILIARES!!!!!!!!!!!!!!!!!!!!!
         teste_interruptor = true;
         teste_paper = true;
         teste_door = true;
+        teste_caixas = true;
     }
     if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
     {
@@ -1385,7 +1403,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     // Se o usuário apertar a tecla O, utilizamos projeção ortográfica.
     if (key == GLFW_KEY_O && action == GLFW_PRESS)
     {
-        lookAt_Cubo=true;
         g_UsePerspectiveProjection = false;
 
     }
@@ -1672,8 +1689,8 @@ void buildFirstScene()
     struct sceneHelper Objeto;
 
     // aqui é o desenho do zombie
-    Objeto.model = Matrix_Translate(-1.0f,1.5f,0.0f)
-                   * Matrix_Scale(3.0f,3.0f,3.0);
+    Objeto.model = Matrix_Translate(-1.0f,1.5f,-16.0f)
+                   * Matrix_Scale(3.0f,3.0f,3.0f);
     strcpy(Objeto.name,"zombie");
     Objeto.nameId = ZOMBIE;
     sceneVector.push_back(Objeto);
@@ -1757,27 +1774,202 @@ void buildFirstScene()
     Objeto.nameId = CUBE;
     sceneVector.push_back(Objeto);
 
-    Objeto.model = Matrix_Translate(p_inicial_caixa1.x + 6.0f, p_inicial_caixa1.y  -1.0f, p_inicial_caixa1.z + 19.50f);
-    strcpy(Objeto.name,"caixa");
-    Objeto.nameId = CAIXA1;
-    sceneVector.push_back(Objeto);
+    //caixa 1
+    if (moveCaixa1 == 1)
+    {
+        if (flagCaixa==0)
+        {
+            auxCaixa=glfwGetTime();
+            flagCaixa=1;
+        }
+        t = (glfwGetTime() - auxCaixa)/2;
+        t = sin(t);
 
-    Objeto.model = Matrix_Translate(p_inicial_caixa2.x  -9.0f,p_inicial_caixa2.y  -1.0f,p_inicial_caixa2.z + 0.0f) * Matrix_Rotate_Y(-1.57f);
-    strcpy(Objeto.name,"caixa");
-    Objeto.nameId = CAIXA2;
-    sceneVector.push_back(Objeto);
 
-    Objeto.model = Matrix_Translate(p_inicial_caixa3.x + 9.0f,p_inicial_caixa3.y  -1.0f, p_inicial_caixa3.z  -3.50f) * Matrix_Rotate_Y(1.57f);
-    strcpy(Objeto.name,"caixa");
-    Objeto.nameId = CAIXA3;
-    sceneVector.push_back(Objeto);
+        //pontos de controle
+        glm::vec4 p1  = glm::vec4(p_inicial_caixa1.x,       p_inicial_caixa1.y,         p_inicial_caixa1.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_caixa1.x,       p_inicial_caixa1.y+2.0,     p_inicial_caixa1.z-7.0f, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_caixa1.x -2.0f, p_inicial_caixa1.y + 3.0f,  p_inicial_caixa1.z-12.0f, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa1.x -7.0f, p_inicial_caixa1.y + 5.7f,  p_inicial_caixa1.z-18.0f, 1.0f);
 
-    Objeto.model = Matrix_Translate(p_inicial_caixa4.x  -7.50f,p_inicial_caixa4.y -1.0f,p_inicial_caixa4.z -19.50f) * Matrix_Rotate_Y(3.1415f);
-    strcpy(Objeto.name,"caixa");
-    Objeto.nameId = CAIXA4;
-    sceneVector.push_back(Objeto);
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa1  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
 
-    Objeto.model = Matrix_Translate(p_inicial_caixa5.x + 9.0f, p_inicial_caixa5.y + 0.50f ,p_inicial_caixa5.z + 2.0f) * Matrix_Rotate_Y(-1.57);
+        Objeto.model = Matrix_Translate(centro_caixa1.x, centro_caixa1.y, centro_caixa1.z);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA1;
+        sceneVector.push_back(Objeto);
+        printf("%f\t%f\t%f\n", centro_caixa1.x,centro_caixa1.y,centro_caixa1.z);
+
+        if (centro_caixa1.x <=-0.9999f)
+        {
+            moveCaixa1=2;
+            p_inicial_caixa1.x = -1.0f;
+            p_inicial_caixa1.y = 4.7f;
+            p_inicial_caixa1.z = 1.5f;
+            auxCaixa=0;
+            flagCaixa=0;
+        }
+    }
+    else
+    {
+        Objeto.model = Matrix_Translate(p_inicial_caixa1.x, p_inicial_caixa1.y, p_inicial_caixa1.z);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA1;
+        sceneVector.push_back(Objeto);
+    }
+
+    //caixa 2
+    if(moveCaixa2==1)
+    {
+        if (flagCaixa==0)
+        {
+            auxCaixa=glfwGetTime();
+            flagCaixa=1;
+        }
+        t = (glfwGetTime() - auxCaixa)/2;
+        t = sin(t);
+
+        glm::vec4 p1  = glm::vec4(p_inicial_caixa2.x,       p_inicial_caixa2.y,         p_inicial_caixa2.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_caixa2.x,       p_inicial_caixa2.y +1.0,    p_inicial_caixa2.z+1.0f, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_caixa2.x +3.0f, p_inicial_caixa2.y +2.0f,   p_inicial_caixa2.z+1.0f, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa2.x +8.0f, p_inicial_caixa2.y +3.95f,   p_inicial_caixa2.z+1.5f, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa2  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        if (rotacaoCaixa2<1.57f)
+            rotacaoCaixa2+=0.0015f;
+
+        Objeto.model = Matrix_Translate(centro_caixa2.x, centro_caixa2.y, centro_caixa2.z) * Matrix_Rotate_Y(-1.57f + rotacaoCaixa2);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA2;
+        sceneVector.push_back(Objeto);
+
+        if (centro_caixa2.x >=-1.0001f)
+        {
+            moveCaixa2=2;
+            p_inicial_caixa2.x = -1.0f;
+            p_inicial_caixa2.y = 2.95f;
+            p_inicial_caixa2.z = 1.5f;
+            auxCaixa=0;
+            flagCaixa=0;
+        }
+
+    }
+    else
+    {
+        Objeto.model = Matrix_Translate(p_inicial_caixa2.x,p_inicial_caixa2.y,p_inicial_caixa2.z) * Matrix_Rotate_Y(-1.57f + rotacaoCaixa2);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA2;
+        sceneVector.push_back(Objeto);
+    }
+
+    //caixa 3
+    if(moveCaixa3==1)
+    {
+        if (flagCaixa==0)
+        {
+            auxCaixa=glfwGetTime();
+            flagCaixa=1;
+        }
+        t = (glfwGetTime() - auxCaixa)/2;
+        t = sin(t);
+
+        glm::vec4 p1  = glm::vec4(p_inicial_caixa3.x,       p_inicial_caixa3.y,         p_inicial_caixa3.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_caixa3.x-2.0f,  p_inicial_caixa3.y +1.0f,   p_inicial_caixa3.z+1.0f, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_caixa3.x -5.0f, p_inicial_caixa3.y +2.3f,   p_inicial_caixa3.z+3.0f, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa3.x -10.0f,p_inicial_caixa3.y +2.3f,   p_inicial_caixa3.z+5.0f, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa3  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        if (rotacaoCaixa3>-1.57f)
+            rotacaoCaixa3-=0.002f;
+
+        Objeto.model = Matrix_Translate(centro_caixa3.x, centro_caixa3.y, centro_caixa3.z) * Matrix_Rotate_Y(1.57f + rotacaoCaixa3);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA3;
+        sceneVector.push_back(Objeto);
+        if (centro_caixa3.x <=-0.9999f)
+        {
+            moveCaixa3=2;
+            p_inicial_caixa3.x = -1.0f;
+            p_inicial_caixa3.y = 1.3f;
+            p_inicial_caixa3.z = 1.5f;
+            auxCaixa=0;
+            flagCaixa=0;
+        }
+    }
+    else
+    {
+        Objeto.model = Matrix_Translate(p_inicial_caixa3.x,p_inicial_caixa3.y, p_inicial_caixa3.z) * Matrix_Rotate_Y(1.57f + rotacaoCaixa3);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA3;
+        sceneVector.push_back(Objeto);
+    }
+
+     //caixa 4
+    if(moveCaixa4==1)
+    {
+        if (flagCaixa==0)
+        {
+            auxCaixa=glfwGetTime();
+            flagCaixa=1;
+        }
+        t = (glfwGetTime() - auxCaixa)/2;
+        t = sin(t);
+
+        glm::vec4 p1  = glm::vec4(p_inicial_caixa4.x,       p_inicial_caixa4.y,         p_inicial_caixa4.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_caixa4.x+2.0f,  p_inicial_caixa4.y,         p_inicial_caixa4.z+6.0f, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_caixa4.x+5.0f,  p_inicial_caixa4.y+0.6f,    p_inicial_caixa4.z+15.0f, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa4.x+6.5f,  p_inicial_caixa4.y+0.6f,    p_inicial_caixa4.z+21.0f, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa4  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        if (rotacaoCaixa4>-3.1415f)
+            rotacaoCaixa4-=0.004f;
+
+        Objeto.model = Matrix_Translate(centro_caixa4.x, centro_caixa4.y, centro_caixa4.z) * Matrix_Rotate_Y(3.1415f + rotacaoCaixa4);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA4;
+        sceneVector.push_back(Objeto);
+        if (centro_caixa4.z >=1.4999f)
+        {
+            moveCaixa4=2;
+            p_inicial_caixa4.x = -1.0f;
+            p_inicial_caixa4.y = -0.4f;
+            p_inicial_caixa4.z = 1.5f;
+            auxCaixa=0;
+            flagCaixa=0;
+        }
+    }
+    else
+    {
+        Objeto.model = Matrix_Translate(p_inicial_caixa4.x,p_inicial_caixa4.y,p_inicial_caixa4.z) * Matrix_Rotate_Y(3.1415f + rotacaoCaixa4);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA4;
+        sceneVector.push_back(Objeto);
+    }
+
+    Objeto.model = Matrix_Translate(p_inicial_caixa5.x, p_inicial_caixa5.y,p_inicial_caixa5.z) * Matrix_Rotate_Y(-1.57);
     strcpy(Objeto.name,"caixa");
     Objeto.nameId = CAIXA5;
     sceneVector.push_back(Objeto);
@@ -2127,7 +2319,6 @@ void abrePorta (float x, float y, float z)
                 ))
         {
             printf("\nA porta foi clicada");
-
             if(door_locked==1&&intersection_distance<=5.0f)
             {
                 PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\locked-door.wav", NULL, SND_FILENAME | SND_ASYNC);
@@ -2143,26 +2334,24 @@ void abrePorta (float x, float y, float z)
     }
 };
 
-void testaCubo (float x, float y, float z)
+void testaCaixas(float x, float y, float z)
 {
-    if(lookAt_Cubo)
+    if(teste_caixas)
     {
-        //variavel é true quando usuario solta botao direito
-        lookAt_Cubo = false;
-        //vetor ray_direction (sentido da camera)
         float norma_camera = sqrt( x*x + y*y + z*z );
         glm::vec3 ray_direction = glm::vec3(-x/norma_camera,-y/norma_camera,-z/norma_camera);
 
         // coordenadas minimas e máximas da esfera
-        glm::vec3 aabb_min = glm::vec3(-1.0f,-1.0f,-1.0f);
-        glm::vec3 aabb_max = glm::vec3(1.0f,1.0f,1.0f);
-
-        // transformações da esfera
-        glm::mat4 target_model = Matrix_Translate(-4.0f,0.7f,8.5f); // target_model é o objeto que vai ligar/desligar a luz aqui scenevetor[1] é o coelho
+        glm::vec4 aabb_min = glm::vec4(-1.0f,-1.0f,-1.0f,1.0f);
+        glm::vec4 aabb_max = glm::vec4(1.0f,1.0f,1.0f,1.0f);
 
         float intersection_distance;
-        //testa se tocou o botão
-        if(TestRayOBBIntersection(
+        // transformações da esfera
+        glm::mat4 target_model = sceneVector[8].model; //testa primeira caixa
+        aabb_min = aabb_min * target_model;
+        aabb_max = aabb_max * target_model;
+
+         if(TestRayOBBIntersection(
                     glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
                     ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
                     aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
@@ -2171,15 +2360,63 @@ void testaCubo (float x, float y, float z)
                     intersection_distance // Output : distance between ray_origin and the intersection with the OBB
                 ))
         {
-
-            if(intersection_distance<=3.0f)
-            {
-                g_UsePerspectiveProjection = false;
-            }
+            if (moveCaixa1 ==0 && intersection_distance<=5.0f)
+                moveCaixa1=1;
         }
+
+        target_model = sceneVector[9].model; //testa segunda caixa
+        aabb_min = aabb_min * target_model;
+        aabb_max = aabb_max * target_model;
+
+         if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+            if (moveCaixa2 ==0 && intersection_distance<=5.0f)
+                moveCaixa2=1;
+        }
+
+        target_model = sceneVector[10].model; //testa terceira caixa
+        aabb_min = aabb_min * target_model;
+        aabb_max = aabb_max * target_model;
+
+         if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+            if (moveCaixa3 ==0 && intersection_distance<=5.0f)
+                moveCaixa3=1;
+        }
+
+        target_model = sceneVector[11].model; //testa quarta caixa
+        aabb_min = aabb_min * target_model;
+        aabb_max = aabb_max * target_model;
+
+         if(TestRayOBBIntersection(
+                    glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
+                    ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
+                    aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
+                    aabb_max,          // Maximum X,Y,Z coords. Often aabb_min*-1 if your mesh is centered, but it's not always the case.
+                    target_model,       // Transformation applied to the mesh (which will thus be also applied to its bounding box)
+                    intersection_distance // Output : distance between ray_origin and the intersection with the OBB
+                ))
+        {
+            if (moveCaixa4 ==0 && intersection_distance<=5.0f)
+                moveCaixa4=1;
+        }
+        teste_caixas=false;
     }
 };
-
 
 void buildRoom(float largura, float comprimento){
 
