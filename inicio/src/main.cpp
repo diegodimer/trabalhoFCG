@@ -617,6 +617,16 @@ int main(int argc, char* argv[])
         }
         if (ordemCaixas)
             door_locked = 0;
+        if(moveCaixa1==-1 && moveCaixa2==-1 && moveCaixa3==-1 && moveCaixa4==-1)
+        {
+            moveCaixa1=0;
+            moveCaixa2=0;
+            moveCaixa3=0;
+            moveCaixa4=0;
+            isMoving=false;
+            auxCaixa=0;
+            flagCaixa=0;
+        }
         // Enviamos as matrizes "view" e "projection" para a placa de vídeo
         // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
         // efetivamente aplicadas em todos os pontos.
@@ -1819,13 +1829,51 @@ void buildFirstScene()
 
         if (centro_caixa1.x <=-0.9999f)
         {
-            moveCaixa1=2;
+            moveCaixa1=0;
             p_inicial_caixa1.x = -1.0f;
             p_inicial_caixa1.y = 4.7f;
             p_inicial_caixa1.z = 1.5f;
             auxCaixa=0;
             flagCaixa=0;
             isMoving=false;
+        }
+    }
+
+    else if (moveCaixa1 == 2)
+    {
+        if (flagCaixa==0)
+        {
+            auxCaixa=glfwGetTime();
+            flagCaixa=1;
+        }
+        t = (glfwGetTime() - auxCaixa)/2;
+        t = sin(t);
+
+
+        //pontos de controle
+        glm::vec4 p1  = glm::vec4(p_inicial_caixa1.x,       p_inicial_caixa1.y,         p_inicial_caixa1.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_caixa1.x,       p_inicial_caixa1.y - 2.0f,   p_inicial_caixa1.z+7.0f, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_caixa1.x +5.0f, p_inicial_caixa1.y - 3.0f,  p_inicial_caixa1.z+12.0f, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa1.x +7.0f, p_inicial_caixa1.y - 5.7f,  p_inicial_caixa1.z+18.0f, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa1  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        Objeto.model = Matrix_Translate(centro_caixa1.x, centro_caixa1.y, centro_caixa1.z);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA1;
+        sceneVector.push_back(Objeto);
+
+        if (centro_caixa1.x >=5.9999f)
+        {
+            moveCaixa1=-1;
+            p_inicial_caixa1.x = 6.0f;
+            p_inicial_caixa1.y = -1.0f;
+            p_inicial_caixa1.z = 19.5f;
         }
     }
     else
@@ -1869,15 +1917,56 @@ void buildFirstScene()
 
         if (centro_caixa2.x >=-1.0001f)
         {
-            moveCaixa2=2;
+            moveCaixa2=0;
             p_inicial_caixa2.x = -1.0f;
             p_inicial_caixa2.y = 2.95f;
             p_inicial_caixa2.z = 1.5f;
+            rotacaoCaixa2=1.57f;
             auxCaixa=0;
             flagCaixa=0;
             isMoving=false;
         }
 
+    }
+
+    else if(moveCaixa2==2)
+    {
+        if (flagCaixa==0)
+        {
+            auxCaixa=glfwGetTime();
+            flagCaixa=1;
+        }
+        t = (glfwGetTime() - auxCaixa)/2;
+        t = sin(t);
+
+        glm::vec4 p1  = glm::vec4(p_inicial_caixa2.x,       p_inicial_caixa2.y,         p_inicial_caixa2.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_caixa2.x,       p_inicial_caixa2.y -1.0,    p_inicial_caixa2.z-1.0f, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_caixa2.x -3.0f, p_inicial_caixa2.y -2.0f,   p_inicial_caixa2.z-1.0f, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa2.x -8.0f, p_inicial_caixa2.y -3.95f,   p_inicial_caixa2.z-1.5f, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa2  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        if (rotacaoCaixa2>-1.57f)
+            rotacaoCaixa2-=0.0012f;
+
+        Objeto.model = Matrix_Translate(centro_caixa2.x, centro_caixa2.y, centro_caixa2.z) * Matrix_Rotate_Y(-1.57f + rotacaoCaixa2);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA2;
+        sceneVector.push_back(Objeto);
+
+        if (centro_caixa2.x <=-8.999f)
+        {
+            moveCaixa2=-1;
+            p_inicial_caixa2.x = -9.0f;
+            p_inicial_caixa2.y = -1.0f;
+            p_inicial_caixa2.z = 0.0f;
+            rotacaoCaixa2=0.0f;
+        }
     }
     else
     {
@@ -1919,13 +2008,52 @@ void buildFirstScene()
         sceneVector.push_back(Objeto);
         if (centro_caixa3.x <=-0.9999f)
         {
-            moveCaixa3=2;
+            moveCaixa3=0;
             p_inicial_caixa3.x = -1.0f;
             p_inicial_caixa3.y = 1.3f;
             p_inicial_caixa3.z = 1.5f;
+            rotacaoCaixa3=-1.57f;
             auxCaixa=0;
             flagCaixa=0;
             isMoving=false;
+        }
+    }
+    else if(moveCaixa3==2)
+    {
+        if (flagCaixa==0)
+        {
+            auxCaixa=glfwGetTime();
+            flagCaixa=1;
+        }
+        t = (glfwGetTime() - auxCaixa)/2;
+        t = sin(t);
+
+        glm::vec4 p1  = glm::vec4(p_inicial_caixa3.x,       p_inicial_caixa3.y,         p_inicial_caixa3.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_caixa3.x +2.0f, p_inicial_caixa3.y -1.0f,   p_inicial_caixa3.z-1.0f, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_caixa3.x +5.0f, p_inicial_caixa3.y -2.3f,   p_inicial_caixa3.z-3.0f, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa3.x +10.0f,p_inicial_caixa3.y -2.3f,   p_inicial_caixa3.z-5.0f, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa3  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        if (rotacaoCaixa3<1.57f)
+            rotacaoCaixa3+=0.0012f;
+
+        Objeto.model = Matrix_Translate(centro_caixa3.x, centro_caixa3.y, centro_caixa3.z) * Matrix_Rotate_Y(1.57f + rotacaoCaixa3);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA3;
+        sceneVector.push_back(Objeto);
+        if (centro_caixa3.x >=8.9999f)
+        {
+            moveCaixa3=-1;
+            p_inicial_caixa3.x = 9.0f;
+            p_inicial_caixa3.y = -1.0f;
+            p_inicial_caixa3.z = -3.5f;
+            rotacaoCaixa3=0.0f;
         }
     }
     else
@@ -1968,13 +2096,52 @@ void buildFirstScene()
         sceneVector.push_back(Objeto);
         if (centro_caixa4.z >=1.4999f)
         {
-            moveCaixa4=2;
+            moveCaixa4=0;
             p_inicial_caixa4.x = -1.0f;
             p_inicial_caixa4.y = -0.4f;
             p_inicial_caixa4.z = 1.5f;
+            rotacaoCaixa4=-3.1415f;
             auxCaixa=0;
             flagCaixa=0;
             isMoving=false;
+        }
+    }
+    else if(moveCaixa4==2)
+    {
+        if (flagCaixa==0)
+        {
+            auxCaixa=glfwGetTime();
+            flagCaixa=1;
+        }
+        t = (glfwGetTime() - auxCaixa)/2;
+        t = sin(t);
+
+        glm::vec4 p1  = glm::vec4(p_inicial_caixa4.x,       p_inicial_caixa4.y,         p_inicial_caixa4.z, 1.0f);
+        glm::vec4 p2  = glm::vec4(p_inicial_caixa4.x-2.0f,  p_inicial_caixa4.y,         p_inicial_caixa4.z-6.0f, 1.0f);
+        glm::vec4 p3  = glm::vec4(p_inicial_caixa4.x-5.0f,  p_inicial_caixa4.y-0.6f,    p_inicial_caixa4.z-15.0f, 1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa4.x-6.5f,  p_inicial_caixa4.y-0.6f,    p_inicial_caixa4.z-21.0f, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa4  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        if (rotacaoCaixa4<3.1415f)
+            rotacaoCaixa4+=0.0025f;
+
+        Objeto.model = Matrix_Translate(centro_caixa4.x, centro_caixa4.y, centro_caixa4.z) * Matrix_Rotate_Y(3.1415f + rotacaoCaixa4);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA4;
+        sceneVector.push_back(Objeto);
+        if (centro_caixa4.z <=-19.4999f)
+        {
+            moveCaixa4=-1;
+            p_inicial_caixa4.x = -7.5f;
+            p_inicial_caixa4.y = -1.0f;
+            p_inicial_caixa4.z = -19.5f;
+            rotacaoCaixa4=0;
         }
     }
     else
@@ -2376,7 +2543,7 @@ void testaCaixas(float x, float y, float z)
                     intersection_distance // Output : distance between ray_origin and the intersection with the OBB
                 ))
         {
-            if (moveCaixa1 ==0 && intersection_distance<=5.0f)
+            if (moveCaixa1 ==0 && intersection_distance<=5.0f && isMoving==false)
             {
                 moveCaixa1=1;
                 isMoving=true;
@@ -2398,7 +2565,7 @@ void testaCaixas(float x, float y, float z)
                     intersection_distance // Output : distance between ray_origin and the intersection with the OBB
                 ))
         {
-            if (moveCaixa2 ==0 && intersection_distance<=5.0f)
+            if (moveCaixa2 ==0 && intersection_distance<=5.0f && isMoving==false)
             {
                 moveCaixa2=1;
                 isMoving=true;
@@ -2420,7 +2587,7 @@ void testaCaixas(float x, float y, float z)
                     intersection_distance // Output : distance between ray_origin and the intersection with the OBB
                 ))
         {
-            if (moveCaixa3 ==0 && intersection_distance<=5.0f)
+            if (moveCaixa3 ==0 && intersection_distance<=5.0f && isMoving==false)
             {
                 moveCaixa3=1;
                 isMoving=true;
@@ -2442,7 +2609,7 @@ void testaCaixas(float x, float y, float z)
                     intersection_distance // Output : distance between ray_origin and the intersection with the OBB
                 ))
         {
-            if (moveCaixa4 ==0 && intersection_distance<=5.0f)
+            if (moveCaixa4 ==0 && intersection_distance<=5.0f && isMoving==false)
             {
                 moveCaixa4=1;
                 isMoving=true;
@@ -2520,7 +2687,13 @@ int testa_ordem()
     if (ordem[0] ==2 && ordem[1]==3 &&ordem[2]==1 && ordem[3]==4)
         return 1;
     else
+    {
+        moveCaixa1=2;
+        moveCaixa2=2;
+        moveCaixa3=2;
+        moveCaixa4=2;
         return 0;
+    }
 }
 
 
