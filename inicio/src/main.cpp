@@ -5,16 +5,10 @@
 //    INF01047 Fundamentos de Computação Gráfica
 //               Prof. Eduardo Gastal
 //
-//                   LABORATÓRIO 4
-//
-
-// Arquivos "headers" padrões de C podem ser incluídos em um
-// programa C++, sendo necessário somente adicionar o caractere
-// "c" antes de seu nome, e remover o sufixo ".h". Exemplo:
-//    #include <stdio.h> // Em C
-//  vira
-//    #include <cstdio> // Em C++
-//
+//                   Trabalho Final
+// ANDREI CORDOVA DE AZEVEDO
+// DIEGO DIMER RODRIGUES
+// EDUARDO PAIM
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -127,9 +121,6 @@ void TextRendering_PrintMatrixVectorProductDivW(GLFWwindow* window, glm::mat4 M,
 
 // Funções abaixo renderizam como texto na janela OpenGL algumas matrizes e
 // outras informações do programa. Definidas após main().
-void TextRendering_ShowModelViewProjection(GLFWwindow* window, glm::mat4 projection, glm::mat4 view, glm::mat4 model, glm::vec4 p_model);
-void TextRendering_ShowEulerAngles(GLFWwindow* window);
-void TextRendering_ShowProjection(GLFWwindow* window);
 void TextRendering_ShowFramesPerSecond(GLFWwindow* window);
 
 // Funções callback para comunicação com o sistema operacional e interação do
@@ -280,7 +271,7 @@ bool aPressed = false;
 bool sPressed = false;
 bool dPressed = false;
 bool altPress = false;
-
+int sceneNumber;
 glm::vec4 camera_position_c;
 
 
@@ -375,6 +366,7 @@ int main(int argc, char* argv[])
     LoadTextureImage("../../data/textures/caixa3.jpeg");      // textura da caixa
     LoadTextureImage("../../data/textures/caixa4.jpeg");      // textura da caixa
     LoadTextureImage("../../data/textures/caixa5.jpeg");      // textura da caixa
+    LoadTextureImage("../../data/textures/papel2.png");      // textura da folha
 
     // Carregamos os shaders de vértices e de fragmentos que serão utilizados
     // para renderização. Veja slides 217-219 do documento "Aula_03_Rendering_Pipeline_Grafico.pdf".
@@ -464,10 +456,10 @@ int main(int argc, char* argv[])
 #define CAIXA3 14
 #define CAIXA4 15
 #define CAIXA5 16
+#define FOLHA  17
 
 
-
-    int sceneNumber = 1;
+    sceneNumber = 1;
     tAnterior = glfwGetTime();
     glm::vec4 cameraMov;
     camera_position_c = glm::vec4(3.0f, 2.0f, 5.0f, 1.0f); // seto a posição inicial
@@ -481,27 +473,28 @@ int main(int argc, char* argv[])
 
 
     // Ficamos em loop, renderizando, até que o usuário feche a janela
-     bool canMove ;
+    bool canMove ;
     while (!glfwWindowShouldClose(window))
     {
+
+        // limpa o vetor
+        sceneVector.clear();
         // constrói primeira cena (aqui se vir mais cenas fazemos aqui mesmo)
         // precisa que esse vetor seja reconstruído varias vezes por causa da interação, tipo o movimento do coelho
         if (sceneNumber == 1  )
         {
-            // limpa o vetor
-            sceneVector.clear();
             // constrói o vetor de novo
             buildFirstScene();
         }
-        // Aqui executamos as operações de renderização
-
+        else
+        {
+            glfwSetWindowShouldClose(window, GL_TRUE);
+        }
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        // "Pintamos" todos os pixels do framebuffer com a cor definida acima,
-        // e também resetamos todos os pixels do Z-buffer (depth buffer).
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // Pedimos para a GPU utilizar o programa de GPU criado acima (contendo
-        // os shaders de vértice e fragmentos).
+
         glUseProgram(program_id);
 
         tAgora = glfwGetTime();
@@ -513,9 +506,6 @@ int main(int argc, char* argv[])
 
 
         // Computamos a posição da câmera utilizando coordenadas esféricas.  As
-        // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
-        // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
-        // e ScrollCallback().
         float r = g_CameraDistance;
         float y = r*sin(g_CameraPhi);
         float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
@@ -526,27 +516,31 @@ int main(int argc, char* argv[])
 
         /// TESTE DE COLISAO
         //Calculamos se a camera pode, de fato, se mover e não vai colidir com nada
-        for(int i=0; (unsigned int)i<sceneVector.size(); i++){
+        for(int i=0; (unsigned int)i<sceneVector.size(); i++)
+        {
             glm::vec4 bbox_max =  sceneVector[i].model * glm::vec4(g_VirtualScene[sceneVector[i].name].bbox_max.x, g_VirtualScene[sceneVector[i].name].bbox_max.y,
-                                           g_VirtualScene[sceneVector[i].name].bbox_max.z, 1.0f);
+                                  g_VirtualScene[sceneVector[i].name].bbox_max.z, 1.0f);
             glm::vec4 bbox_min =   sceneVector[i].model * glm::vec4(g_VirtualScene[sceneVector[i].name].bbox_min.x, g_VirtualScene[sceneVector[i].name].bbox_min.y,
-                                           g_VirtualScene[sceneVector[i].name].bbox_min.z, 1.0f) ;
+                                   g_VirtualScene[sceneVector[i].name].bbox_min.z, 1.0f) ;
             glm::vec4 fixedBBoxMax = bbox_max;
             glm::vec4 fixedBBoxMin = bbox_min;
 
             // com as transoformações as bounding boxes podem ter sofrido alteração (rotações por ex), então volta a ordenar elas
-                bbox_min.x = std::min(fixedBBoxMin.x, fixedBBoxMax.x);
-                bbox_min.y = std::min(fixedBBoxMin.y, fixedBBoxMax.y);
-                bbox_min.z = std::min(fixedBBoxMin.z, fixedBBoxMax.z);
-                bbox_max.x = std::max(fixedBBoxMin.x, fixedBBoxMax.x);
-                bbox_max.y = std::max(fixedBBoxMin.y, fixedBBoxMax.y);
-                bbox_max.z = std::max(fixedBBoxMin.z, fixedBBoxMax.z);
+            bbox_min.x = std::min(fixedBBoxMin.x, fixedBBoxMax.x);
+            bbox_min.y = std::min(fixedBBoxMin.y, fixedBBoxMax.y);
+            bbox_min.z = std::min(fixedBBoxMin.z, fixedBBoxMax.z);
+            bbox_max.x = std::max(fixedBBoxMin.x, fixedBBoxMax.x);
+            bbox_max.y = std::max(fixedBBoxMin.y, fixedBBoxMax.y);
+            bbox_max.z = std::max(fixedBBoxMin.z, fixedBBoxMax.z);
 
-                // planos nao tem volume então é um pouco diferente o role
-            if(sceneVector[i].nameId != CHAO && sceneVector[i].nameId != TETO && sceneVector[i].nameId != PLANE){
+            // planos nao tem volume então é um pouco diferente o role
+            if(sceneVector[i].nameId != CHAO && sceneVector[i].nameId != TETO && sceneVector[i].nameId != PLANE)
+            {
                 if(collisionCheckPointBox(camera_position_c + (cameraMov * deltaT), bbox_min, bbox_max))
                     canMove = false;
-            } else if (sceneVector[i].nameId == PLANE){
+            }
+            else if (sceneVector[i].nameId == PLANE)
+            {
                 // pegamos as normais previamente computadas dos planos (pela função computenormals)
                 glm::vec4 normal = glm::vec4(planemodel.attrib.normals[0], planemodel.attrib.normals[1], planemodel.attrib.normals[2], 0.0f);
                 normal = sceneVector[i].model * normal; // aplicamos a matriz de transformação de cada plano nelas
@@ -555,33 +549,34 @@ int main(int argc, char* argv[])
                 // sei que não é geometricamente correto tratar normal como um ponto como eu faço aqui
                 // PORÉM, eu sei que normal é um vetor que aponta para o plano e eu preciso de um ponto no plano, a normal serve perfeitamente
                 position_vector = glm::vec4(normal.x - position_vector.x, normal.y - position_vector.y, normal.z - position_vector.z, 0.0f);
-                if(dotproduct(position_vector, normal)<=0){ // se o sinal do produto vetorial entre a posição e a normal é <0 significa que ele está a mais de 90º entao nao pode ir
+                if(dotproduct(position_vector, normal)<=0)  // se o sinal do produto vetorial entre a posição e a normal é <0 significa que ele está a mais de 90º entao nao pode ir
+                {
                     canMove=false;
                 }
             }
-                if (sceneVector[i].nameId==ZOMBIE)
+            if (sceneVector[i].nameId==ZOMBIE)
+            {
+                glm::vec4 bbox_max_aux = sceneVector[11].model * glm::vec4(g_VirtualScene[sceneVector[11].name].bbox_max.x, g_VirtualScene[sceneVector[11].name].bbox_max.y,
+                                         g_VirtualScene[sceneVector[11].name].bbox_max.z, 1.0f);
+                glm::vec4 bbox_min_aux = sceneVector[11].model * glm::vec4(g_VirtualScene[sceneVector[11].name].bbox_min.x, g_VirtualScene[sceneVector[11].name].bbox_min.y,
+                                         g_VirtualScene[sceneVector[11].name].bbox_min.z, 1.0f) ;
+                glm::vec4 fixedBBoxMaxAux = bbox_max_aux;
+                glm::vec4 fixedBBoxMinAux = bbox_min_aux;
+
+                bbox_min_aux.x = std::min(fixedBBoxMinAux.x, fixedBBoxMaxAux.x);
+                bbox_min_aux.y = std::min(fixedBBoxMinAux.y, fixedBBoxMaxAux.y);
+                bbox_min_aux.z = std::min(fixedBBoxMinAux.z, fixedBBoxMaxAux.z);
+                bbox_max_aux.x = std::max(fixedBBoxMinAux.x, fixedBBoxMaxAux.x);
+                bbox_max_aux.y = std::max(fixedBBoxMinAux.y, fixedBBoxMaxAux.y);
+                bbox_max_aux.z = std::max(fixedBBoxMinAux.z, fixedBBoxMaxAux.z);
+
+                if (collisionCheckBoxBox(bbox_min_aux, bbox_max_aux, bbox_min, bbox_max))
                 {
-                    glm::vec4 bbox_max_aux = sceneVector[11].model * glm::vec4(g_VirtualScene[sceneVector[11].name].bbox_max.x, g_VirtualScene[sceneVector[11].name].bbox_max.y,
-                                           g_VirtualScene[sceneVector[11].name].bbox_max.z, 1.0f);
-                    glm::vec4 bbox_min_aux = sceneVector[11].model * glm::vec4(g_VirtualScene[sceneVector[11].name].bbox_min.x, g_VirtualScene[sceneVector[11].name].bbox_min.y,
-                                           g_VirtualScene[sceneVector[11].name].bbox_min.z, 1.0f) ;
-                    glm::vec4 fixedBBoxMaxAux = bbox_max_aux;
-                    glm::vec4 fixedBBoxMinAux = bbox_min_aux;
-
-                    bbox_min_aux.x = std::min(fixedBBoxMinAux.x, fixedBBoxMaxAux.x);
-                    bbox_min_aux.y = std::min(fixedBBoxMinAux.y, fixedBBoxMaxAux.y);
-                    bbox_min_aux.z = std::min(fixedBBoxMinAux.z, fixedBBoxMaxAux.z);
-                    bbox_max_aux.x = std::max(fixedBBoxMinAux.x, fixedBBoxMaxAux.x);
-                    bbox_max_aux.y = std::max(fixedBBoxMinAux.y, fixedBBoxMaxAux.y);
-                    bbox_max_aux.z = std::max(fixedBBoxMinAux.z, fixedBBoxMaxAux.z);
-
-                    if (collisionCheckBoxBox(bbox_min_aux, bbox_max_aux, bbox_min, bbox_max))
-                    {
-                        colisaoCaixa=1;
-                        if(flagBezier!=2)
-                            flagBezier=0;
-                    }
+                    colisaoCaixa=1;
+                    if(flagBezier!=2)
+                        flagBezier=0;
                 }
+            }
 
         }
         /// FIM TESTE DE COLISAO
@@ -592,13 +587,10 @@ int main(int argc, char* argv[])
         // Agora computamos a matriz de Projeção.
         glm::mat4 projection;
 
-        // Note que, no sistema de coordenadas da câmera, os planos near e far
-        // estão no sentido negativo! Veja slides 190-193 do documento "Aula_09_Projecoes.pdf".
         float nearplane = -0.1f;  // Posição do "near plane"
         float farplane  = -50.0f; // Posição do "far plane"
 
         // Projeção Perspectiva.
-        // Para definição do field of view (FOV), veja slide 227 do documento "Aula_09_Projecoes.pdf".
         float field_of_view = 3.141592 / 3.0f;
         projection = Matrix_Perspective(field_of_view, g_ScreenRatio, nearplane, farplane);
 
@@ -621,13 +613,23 @@ int main(int argc, char* argv[])
         }
         else
         {
-            // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
-            // Veja slides 172-182 do documento "Aula_08_Sistemas_de_Coordenadas.pdf".
-            camera_position_c  = glm::vec4(x+8.0f,2.0f,z+1.50f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-            glm::vec4 camera_lookat_l  = glm::vec4(8.0f,0.7f,1.50f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            // camera lookat
+            camera_position_c  = glm::vec4(x+7.0f,2.0f,z+1.50f, 1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            glm::vec4 camera_lookat_l  = glm::vec4(7.0f,0.7f,1.50f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             camera_view_vector = camera_lookat_l - camera_position_c;// Vetor "view", sentido para onde a câmera está virad
-
+            // papel
+            //vetor ray_direction (sentido da camera)
+            glm::vec3 ray_direction = camera_position_c + camera_view_vector;
+            sceneHelper Obj;
+            Obj.model = Matrix_Translate(ray_direction.x-1.0f, ray_direction.y, ray_direction.z)
+                      * Matrix_Rotate_X(1.57f) *Matrix_Rotate_Z(1.57f);
+            strcpy(Obj.name,"plane");
+            Obj.nameId = FOLHA;
+            sceneVector.push_back(Obj);
         }
+
+
+
 
         glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
@@ -651,9 +653,7 @@ int main(int argc, char* argv[])
             auxBezier=0;
             flagBezier=0;
         }
-        // Enviamos as matrizes "view" e "projection" para a placa de vídeo
-        // (GPU). Veja o arquivo "shader_vertex.glsl", onde estas são
-        // efetivamente aplicadas em todos os pontos.
+
         glUniform1i(door_uniform,door_locked);
         glUniform1i(interruptor_uniform,interruptor);
         glUniform1i(paper_uniform,paper);
@@ -675,39 +675,14 @@ int main(int argc, char* argv[])
             DrawVirtualObject(sceneVector[i].name);
         }
 
-        //std::string ab = "Voce ligou a luz";
 
-        //TextRendering_PrintString(window, ab, (float)(-1/20*ab.size()), 0.75f, 4.0f);
-        // Pegamos um vértice com coordenadas de modelo (0.5, 0.5, 0.5, 1) e o
-        // passamos por todos os sistemas de coordenadas armazenados nas
-        // matrizes the_model, the_view, e the_projection; e escrevemos na tela
-        // as matrizes e pontos resultantes dessas transformações.
-        //glm::vec4 p_model(0.5f, 0.5f, 0.5f, 1.0f);
-        //TextRendering_ShowModelViewProjection(window, projection, view, model, p_model);
 
-        // Imprimimos na tela os ângulos de Euler que controlam a rotação do
-        // terceiro cubo.
-        TextRendering_ShowEulerAngles(window);
-
-        // Imprimimos na informação sobre a matriz de projeção sendo utilizada.
-        TextRendering_ShowProjection(window);
 
         // Imprimimos na tela informação sobre o número de quadros renderizados
-        // por segundo (frames per second).
         TextRendering_ShowFramesPerSecond(window);
 
-        // O framebuffer onde OpenGL executa as operações de renderização não
-        // é o mesmo que está sendo mostrado para o usuário, caso contrário
-        // seria possível ver artefatos conhecidos como "screen tearing". A
-        // chamada abaixo faz a troca dos buffers, mostrando para o usuário
-        // tudo que foi renderizado pelas funções acima.
-        // Veja o link: Veja o link: https://en.wikipedia.org/w/index.php?title=Multiple_buffering&oldid=793452829#Double_buffering_in_computer_graphics
         glfwSwapBuffers(window);
 
-        // Verificamos com o sistema operacional se houve alguma interação do
-        // usuário (teclado, mouse, ...). Caso positivo, as funções de callback
-        // definidas anteriormente usando glfwSet*Callback() serão chamadas
-        // pela biblioteca GLFW.
         glfwPollEvents();
     }
 
@@ -722,9 +697,6 @@ int main(int argc, char* argv[])
 // dos objetos na função BuildTrianglesAndAddToVirtualScene().
 void DrawVirtualObject(const char* object_name)
 {
-    // "Ligamos" o VAO. Informamos que queremos utilizar os atributos de
-    // vértices apontados pelo VAO criado pela função BuildTrianglesAndAddToVirtualScene(). Veja
-    // comentários detalhados dentro da definição de BuildTrianglesAndAddToVirtualScene().
     glBindVertexArray(g_VirtualScene[object_name].vertex_array_object_id);
 
     // Setamos as variáveis "bbox_min" e "bbox_max" do fragment shader
@@ -756,24 +728,7 @@ void DrawVirtualObject(const char* object_name)
 //
 void LoadShadersFromFiles()
 {
-    // Note que o caminho para os arquivos "shader_vertex.glsl" e
-    // "shader_fragment.glsl" estão fixados, sendo que assumimos a existência
-    // da seguinte estrutura no sistema de arquivos:
-    //
-    //    + FCG_Lab_01/
-    //    |
-    //    +--+ bin/
-    //    |  |
-    //    |  +--+ Release/  (ou Debug/ ou Linux/)
-    //    |     |
-    //    |     o-- main.exe
-    //    |
-    //    +--+ src/
-    //       |
-    //       o-- shader_vertex.glsl
-    //       |
-    //       o-- shader_fragment.glsl
-    //
+
     vertex_shader_id = LoadShader_Vertex("../../src/shader_vertex.glsl");
     fragment_shader_id = LoadShader_Fragment("../../src/shader_fragment.glsl");
 
@@ -813,6 +768,7 @@ void LoadShadersFromFiles()
     glUniform1i(glGetUniformLocation(program_id, "Caixa3Tex"), 10);
     glUniform1i(glGetUniformLocation(program_id, "Caixa4Tex"), 11);
     glUniform1i(glGetUniformLocation(program_id, "Caixa5Tex"), 12);
+    glUniform1i(glGetUniformLocation(program_id, "FolhaTex"), 13);
 
     glUseProgram(0);
 }
@@ -941,7 +897,7 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
                 const float vx = model->attrib.vertices[3*idx.vertex_index + 0];
                 const float vy = model->attrib.vertices[3*idx.vertex_index + 1];
                 const float vz = model->attrib.vertices[3*idx.vertex_index + 2];
-               // printf("tri %d vert %d = (%.2f, %.2f, %.2f)\n", (int)triangle, (int)vertex, vx, vy, vz);
+                // printf("tri %d vert %d = (%.2f, %.2f, %.2f)\n", (int)triangle, (int)vertex, vx, vy, vz);
 
 
                 bbox_min.x = std::min(bbox_min.x, vx);
@@ -1349,13 +1305,7 @@ void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 // tecla do teclado. Veja http://www.glfw.org/docs/latest/input_guide.html#input_key
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
 {
-    // ==============
-    // Não modifique este loop! Ele é utilizando para correção automatizada dos
-    // laboratórios. Deve ser sempre o primeiro comando desta função KeyCallback().
-    for (int i = 0; i < 10; ++i)
-        if (key == GLFW_KEY_0 + i && action == GLFW_PRESS && mod == GLFW_MOD_SHIFT)
-            std::exit(100 + i);
-    // ==============
+
 
     if (key == GLFW_KEY_W)
     {
@@ -1433,7 +1383,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
 
     }
 
-    // Se o usuário apertar a tecla P, utilizamos projeção perspectiva.
+    // Se o usuário apertar a tecla P, utilizamos camera livre.
     if (key == GLFW_KEY_P && action == GLFW_PRESS)
     {
         g_UsePerspectiveProjection = true;
@@ -1447,10 +1397,11 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
         lightsOn = lightsOn == 0? 1: 0;
     }
 
-    // Se o usuário apertar a tecla O, utilizamos projeção ortográfica.
+    // Se o usuário apertar a tecla O, utilizamos camera lookat.
     if (key == GLFW_KEY_O && action == GLFW_PRESS)
     {
-        g_UsePerspectiveProjection = false;
+        if(paper)
+            g_UsePerspectiveProjection = false;
 
     }
 
@@ -1475,37 +1426,6 @@ void ErrorCallback(int error, const char* description)
     fprintf(stderr, "ERROR: GLFW: %s\n", description);
 }
 
-
-
-// Escrevemos na tela os ângulos de Euler definidos nas variáveis globais
-// g_AngleX, g_AngleY, e g_AngleZ.
-void TextRendering_ShowEulerAngles(GLFWwindow* window)
-{
-    if ( !g_ShowInfoText )
-        return;
-
-    float pad = TextRendering_LineHeight(window);
-
-    char buffer[80];
-    snprintf(buffer, 80, "Euler Angles rotation matrix = Z(%.2f)*Y(%.2f)*X(%.2f)\n", g_AngleZ, g_AngleY, g_AngleX);
-
-    TextRendering_PrintString(window, buffer, -1.0f+pad/10, -1.0f+2*pad/10, 1.0f);
-}
-
-// Escrevemos na tela qual matriz de projeção está sendo utilizada.
-void TextRendering_ShowProjection(GLFWwindow* window)
-{
-    if ( !g_ShowInfoText )
-        return;
-
-    float lineheight = TextRendering_LineHeight(window);
-    float charwidth = TextRendering_CharWidth(window);
-
-    if ( g_UsePerspectiveProjection )
-        TextRendering_PrintString(window, "Perspective", 1.0f-13*charwidth, -1.0f+2*lineheight/10, 1.0f);
-    else
-        TextRendering_PrintString(window, "Orthographic", 1.0f-13*charwidth, -1.0f+2*lineheight/10, 1.0f);
-}
 
 // Escrevemos na tela o número de quadros renderizados por segundo (frames per
 // second).
@@ -1545,191 +1465,6 @@ void TextRendering_ShowFramesPerSecond(GLFWwindow* window)
 
 
 
-// Função para debugging: imprime no terminal todas informações de um modelo
-// geométrico carregado de um arquivo ".obj".
-// Veja: https://github.com/syoyo/tinyobjloader/blob/22883def8db9ef1f3ffb9b404318e7dd25fdbb51/loader_example.cc#L98
-void PrintObjModelInfo(ObjModel* model)
-{
-    const tinyobj::attrib_t                & attrib    = model->attrib;
-    const std::vector<tinyobj::shape_t>    & shapes    = model->shapes;
-    const std::vector<tinyobj::material_t> & materials = model->materials;
-
-    printf("# of vertices  : %d\n", (int)(attrib.vertices.size() / 3));
-    printf("# of normals   : %d\n", (int)(attrib.normals.size() / 3));
-    printf("# of texcoords : %d\n", (int)(attrib.texcoords.size() / 2));
-    printf("# of shapes    : %d\n", (int)shapes.size());
-    printf("# of materials : %d\n", (int)materials.size());
-
-    for (size_t v = 0; v < attrib.vertices.size() / 3; v++)
-    {
-        printf("  v[%ld] = (%f, %f, %f)\n", static_cast<long>(v),
-               static_cast<const double>(attrib.vertices[3 * v + 0]),
-               static_cast<const double>(attrib.vertices[3 * v + 1]),
-               static_cast<const double>(attrib.vertices[3 * v + 2]));
-    }
-
-    for (size_t v = 0; v < attrib.normals.size() / 3; v++)
-    {
-        printf("  n[%ld] = (%f, %f, %f)\n", static_cast<long>(v),
-               static_cast<const double>(attrib.normals[3 * v + 0]),
-               static_cast<const double>(attrib.normals[3 * v + 1]),
-               static_cast<const double>(attrib.normals[3 * v + 2]));
-    }
-
-    for (size_t v = 0; v < attrib.texcoords.size() / 2; v++)
-    {
-        printf("  uv[%ld] = (%f, %f)\n", static_cast<long>(v),
-               static_cast<const double>(attrib.texcoords[2 * v + 0]),
-               static_cast<const double>(attrib.texcoords[2 * v + 1]));
-    }
-
-    // For each shape
-    for (size_t i = 0; i < shapes.size(); i++)
-    {
-        printf("shape[%ld].name = %s\n", static_cast<long>(i),
-               shapes[i].name.c_str());
-        printf("Size of shape[%ld].indices: %lu\n", static_cast<long>(i),
-               static_cast<unsigned long>(shapes[i].mesh.indices.size()));
-
-        size_t index_offset = 0;
-
-        assert(shapes[i].mesh.num_face_vertices.size() ==
-               shapes[i].mesh.material_ids.size());
-
-        printf("shape[%ld].num_faces: %lu\n", static_cast<long>(i),
-               static_cast<unsigned long>(shapes[i].mesh.num_face_vertices.size()));
-
-        // For each face
-        for (size_t f = 0; f < shapes[i].mesh.num_face_vertices.size(); f++)
-        {
-            size_t fnum = shapes[i].mesh.num_face_vertices[f];
-
-            printf("  face[%ld].fnum = %ld\n", static_cast<long>(f),
-                   static_cast<unsigned long>(fnum));
-
-            // For each vertex in the face
-            for (size_t v = 0; v < fnum; v++)
-            {
-                tinyobj::index_t idx = shapes[i].mesh.indices[index_offset + v];
-                printf("    face[%ld].v[%ld].idx = %d/%d/%d\n", static_cast<long>(f),
-                       static_cast<long>(v), idx.vertex_index, idx.normal_index,
-                       idx.texcoord_index);
-            }
-
-            printf("  face[%ld].material_id = %d\n", static_cast<long>(f),
-                   shapes[i].mesh.material_ids[f]);
-
-            index_offset += fnum;
-        }
-
-        printf("shape[%ld].num_tags: %lu\n", static_cast<long>(i),
-               static_cast<unsigned long>(shapes[i].mesh.tags.size()));
-        for (size_t t = 0; t < shapes[i].mesh.tags.size(); t++)
-        {
-            printf("  tag[%ld] = %s ", static_cast<long>(t),
-                   shapes[i].mesh.tags[t].name.c_str());
-            printf(" ints: [");
-            for (size_t j = 0; j < shapes[i].mesh.tags[t].intValues.size(); ++j)
-            {
-                printf("%ld", static_cast<long>(shapes[i].mesh.tags[t].intValues[j]));
-                if (j < (shapes[i].mesh.tags[t].intValues.size() - 1))
-                {
-                    printf(", ");
-                }
-            }
-            printf("]");
-
-            printf(" floats: [");
-            for (size_t j = 0; j < shapes[i].mesh.tags[t].floatValues.size(); ++j)
-            {
-                printf("%f", static_cast<const double>(
-                           shapes[i].mesh.tags[t].floatValues[j]));
-                if (j < (shapes[i].mesh.tags[t].floatValues.size() - 1))
-                {
-                    printf(", ");
-                }
-            }
-            printf("]");
-
-            printf(" strings: [");
-            for (size_t j = 0; j < shapes[i].mesh.tags[t].stringValues.size(); ++j)
-            {
-                printf("%s", shapes[i].mesh.tags[t].stringValues[j].c_str());
-                if (j < (shapes[i].mesh.tags[t].stringValues.size() - 1))
-                {
-                    printf(", ");
-                }
-            }
-            printf("]");
-            printf("\n");
-        }
-    }
-
-    for (size_t i = 0; i < materials.size(); i++)
-    {
-        printf("material[%ld].name = %s\n", static_cast<long>(i),
-               materials[i].name.c_str());
-        printf("  material.Ka = (%f, %f ,%f)\n",
-               static_cast<const double>(materials[i].ambient[0]),
-               static_cast<const double>(materials[i].ambient[1]),
-               static_cast<const double>(materials[i].ambient[2]));
-        printf("  material.Kd = (%f, %f ,%f)\n",
-               static_cast<const double>(materials[i].diffuse[0]),
-               static_cast<const double>(materials[i].diffuse[1]),
-               static_cast<const double>(materials[i].diffuse[2]));
-        printf("  material.Ks = (%f, %f ,%f)\n",
-               static_cast<const double>(materials[i].specular[0]),
-               static_cast<const double>(materials[i].specular[1]),
-               static_cast<const double>(materials[i].specular[2]));
-        printf("  material.Tr = (%f, %f ,%f)\n",
-               static_cast<const double>(materials[i].transmittance[0]),
-               static_cast<const double>(materials[i].transmittance[1]),
-               static_cast<const double>(materials[i].transmittance[2]));
-        printf("  material.Ke = (%f, %f ,%f)\n",
-               static_cast<const double>(materials[i].emission[0]),
-               static_cast<const double>(materials[i].emission[1]),
-               static_cast<const double>(materials[i].emission[2]));
-        printf("  material.Ns = %f\n",
-               static_cast<const double>(materials[i].shininess));
-        printf("  material.Ni = %f\n", static_cast<const double>(materials[i].ior));
-        printf("  material.dissolve = %f\n",
-               static_cast<const double>(materials[i].dissolve));
-        printf("  material.illum = %d\n", materials[i].illum);
-        printf("  material.map_Ka = %s\n", materials[i].ambient_texname.c_str());
-        printf("  material.map_Kd = %s\n", materials[i].diffuse_texname.c_str());
-        printf("  material.map_Ks = %s\n", materials[i].specular_texname.c_str());
-        printf("  material.map_Ns = %s\n",
-               materials[i].specular_highlight_texname.c_str());
-        printf("  material.map_bump = %s\n", materials[i].bump_texname.c_str());
-        printf("  material.map_d = %s\n", materials[i].alpha_texname.c_str());
-        printf("  material.disp = %s\n", materials[i].displacement_texname.c_str());
-        printf("  <<PBR>>\n");
-        printf("  material.Pr     = %f\n", materials[i].roughness);
-        printf("  material.Pm     = %f\n", materials[i].metallic);
-        printf("  material.Ps     = %f\n", materials[i].sheen);
-        printf("  material.Pc     = %f\n", materials[i].clearcoat_thickness);
-        printf("  material.Pcr    = %f\n", materials[i].clearcoat_thickness);
-        printf("  material.aniso  = %f\n", materials[i].anisotropy);
-        printf("  material.anisor = %f\n", materials[i].anisotropy_rotation);
-        printf("  material.map_Ke = %s\n", materials[i].emissive_texname.c_str());
-        printf("  material.map_Pr = %s\n", materials[i].roughness_texname.c_str());
-        printf("  material.map_Pm = %s\n", materials[i].metallic_texname.c_str());
-        printf("  material.map_Ps = %s\n", materials[i].sheen_texname.c_str());
-        printf("  material.norm   = %s\n", materials[i].normal_texname.c_str());
-        std::map<std::string, std::string>::const_iterator it(
-            materials[i].unknown_parameter.begin());
-        std::map<std::string, std::string>::const_iterator itEnd(
-            materials[i].unknown_parameter.end());
-
-        for (; it != itEnd; it++)
-        {
-            printf("  material.%s = %s\n", it->first.c_str(), it->second.c_str());
-        }
-        printf("\n");
-    }
-}
-
-
 void buildFirstScene()
 {
 
@@ -1761,7 +1496,7 @@ void buildFirstScene()
         glm::vec4 centro_zumbi  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
 
         Objeto.model = Matrix_Translate(centro_zumbi.x, centro_zumbi.y, centro_zumbi.z)
-                        *Matrix_Scale(3.0f,3.0f,3.0f);
+                       *Matrix_Scale(3.0f,3.0f,3.0f);
         strcpy(Objeto.name,"zombie");
         Objeto.nameId = ZOMBIE;
         sceneVector.push_back(Objeto);
@@ -1802,7 +1537,7 @@ void buildFirstScene()
         glm::vec4 centro_zumbi  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
 
         Objeto.model = Matrix_Translate(centro_zumbi.x, centro_zumbi.y, centro_zumbi.z)
-                        *Matrix_Scale(3.0f,3.0f,3.0f);
+                       *Matrix_Scale(3.0f,3.0f,3.0f);
         strcpy(Objeto.name,"zombie");
         Objeto.nameId = ZOMBIE;
         sceneVector.push_back(Objeto);
@@ -1838,9 +1573,9 @@ void buildFirstScene()
 
 // desenho do sofa
     Objeto.model =   Matrix_Translate(8.50f, -1.0f, 10.0f)
-                   * Matrix_Scale(0.025f, 0.025f, 0.025f)
-                   * Matrix_Rotate_Y(-1.57)
-                   * Matrix_Rotate_X(-1.57);
+                     * Matrix_Scale(0.025f, 0.025f, 0.025f)
+                     * Matrix_Rotate_Y(-1.57)
+                     * Matrix_Rotate_X(-1.57);
     strcpy(Objeto.name,"sofa");
     Objeto.nameId = SOFA;
     sceneVector.push_back(Objeto);
@@ -1848,9 +1583,9 @@ void buildFirstScene()
 
 // desenho do sofa
     Objeto.model =   Matrix_Translate(2.0f, -1.0f, 18.50f)
-                   * Matrix_Scale(0.025f, 0.025f, 0.025f)
-                   * Matrix_Rotate_Y(3.14159f)
-                   * Matrix_Rotate_X(-1.57);
+                     * Matrix_Scale(0.025f, 0.025f, 0.025f)
+                     * Matrix_Rotate_Y(3.14159f)
+                     * Matrix_Rotate_X(-1.57);
     strcpy(Objeto.name,"sofa");
     Objeto.nameId = SOFA;
     sceneVector.push_back(Objeto);
@@ -1897,11 +1632,11 @@ void buildFirstScene()
 
 
     Objeto.model = Matrix_Translate(-7.50f,-0.3f,-5.50f)
-                    * Matrix_Scale(0.7f, 0.7f,0.7f)
-                    * Matrix_Rotate_Y(1.57f)
-                    * Matrix_Rotate_X(g_AngleX)
-                    * Matrix_Rotate_Y(g_AngleY)
-                    * Matrix_Rotate_Z(g_AngleZ);
+                   * Matrix_Scale(0.7f, 0.7f,0.7f)
+                   * Matrix_Rotate_Y(1.57f)
+                   * Matrix_Rotate_X(g_AngleX)
+                   * Matrix_Rotate_Y(g_AngleY)
+                   * Matrix_Rotate_Z(g_AngleZ);
     strcpy(Objeto.name,"cube");
     Objeto.nameId = CUBE;
     sceneVector.push_back(Objeto);
@@ -2173,7 +1908,7 @@ void buildFirstScene()
         sceneVector.push_back(Objeto);
     }
 
-     //caixa 4
+    //caixa 4
     if(moveCaixa4==1 && colisaoCaixa==0)
     {
         if (flagBezier==0)
@@ -2332,8 +2067,8 @@ bool TestRayOBBIntersection(
     // tMin is the largest “near” intersection currently found;
     // tMax is the smallest “far” intersection currently found.
     // Delta is used to compute the intersections with the planes.
-    float tMin = 0.0f;
-    float tMax = 100000.0f;
+    float tMin = std::numeric_limits<float>::min();
+    float tMax = std::numeric_limits<float>::max();
 
     //aparentemente o indice do vetor é algo como 0 = x, 1 = y, 2 = z, 3 = x,y e z
     glm::vec3 OBBposition_worldspace(ModelMatrix[3].x, ModelMatrix[3].y, ModelMatrix[3].z);
@@ -2415,11 +2150,11 @@ bool TestRayOBBIntersection(
             float t2 = (e+aabb_max.z)/f; // Intersection with the "right" plane
             float w;
             if (t1>t2)
-                 w=t1;
+                w=t1;
 
             if (t1>t2)
             {
-                 w=t1;
+                w=t1;
                 t1=t2;
                 t2=w; // swap t1 and t2
             }
@@ -2572,7 +2307,8 @@ void lightSwitch(float x, float y, float z)
 };
 
 void bolaPapel(float x, float y, float z)
-{    if(teste_paper)
+{
+    if(teste_paper)
     {
         //variavel é true quando usuario solta botao direito
         teste_paper = false;
@@ -2663,6 +2399,7 @@ void abrePorta (float x, float y, float z)
             else if(intersection_distance<=5.0f) //!!!!!!!!!!!!!!!!PORTA DESTRANCADA, ACABOU
             {
                 PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\door-open.wav", NULL, SND_FILENAME | SND_ASYNC);
+                sceneNumber=2;
             }
         }
     }
@@ -2686,7 +2423,7 @@ void testaCaixas(float x, float y, float z)
         aabb_min = aabb_min * target_model;
         aabb_max = aabb_max * target_model;
 
-         if(TestRayOBBIntersection(
+        if(TestRayOBBIntersection(
                     glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
                     ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
                     aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
@@ -2713,7 +2450,7 @@ void testaCaixas(float x, float y, float z)
         aabb_min = aabb_min * target_model;
         aabb_max = aabb_max * target_model;
 
-         if(TestRayOBBIntersection(
+        if(TestRayOBBIntersection(
                     glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
                     ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
                     aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
@@ -2735,7 +2472,7 @@ void testaCaixas(float x, float y, float z)
         aabb_min = aabb_min * target_model;
         aabb_max = aabb_max * target_model;
 
-         if(TestRayOBBIntersection(
+        if(TestRayOBBIntersection(
                     glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
                     ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
                     aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
@@ -2757,7 +2494,7 @@ void testaCaixas(float x, float y, float z)
         aabb_min = aabb_min * target_model;
         aabb_max = aabb_max * target_model;
 
-         if(TestRayOBBIntersection(
+        if(TestRayOBBIntersection(
                     glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
                     ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
                     aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
@@ -2779,7 +2516,7 @@ void testaCaixas(float x, float y, float z)
         aabb_min = aabb_min * target_model;
         aabb_max = aabb_max * target_model;
 
-         if(TestRayOBBIntersection(
+        if(TestRayOBBIntersection(
                     glm::vec3(camera_position_c.x,camera_position_c.y,camera_position_c.z),  // Ray origin = posição da câmera
                     ray_direction,     // Ray direction (NOT target position!), in world space. Must be normalize()'d.
                     aabb_min,          // Minimum X,Y,Z coords of the mesh when not transformed at all.
@@ -2800,7 +2537,8 @@ void testaCaixas(float x, float y, float z)
     }
 };
 
-void buildRoom(float largura, float comprimento){
+void buildRoom(float largura, float comprimento)
+{
 
     struct sceneHelper Objeto;
 
@@ -2863,7 +2601,7 @@ void buildRoom(float largura, float comprimento){
 
 void testa_ordem()
 {
-    if (ordem[0] ==2 && ordem[1]==3 &&ordem[2]==1 && ordem[3]==4)
+    if (ordem[0] ==1 && ordem[1]==2 &&ordem[2]==3 && ordem[3]==4)
     {
         PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\unlocked-door.wav", NULL, SND_FILENAME | SND_ASYNC);
         door_locked=0;
@@ -2882,8 +2620,8 @@ void testa_ordem()
 bool collisionCheckPointBox(glm::vec4 point, glm::vec4 bboxMin, glm::vec4 bboxMax)
 {
     if (point.x >= bboxMin.x && point.x <= bboxMax.x)
-            if(point.z >= bboxMin.z && point.z <= bboxMax.z)
-                return true;
+        if(point.z >= bboxMin.z && point.z <= bboxMax.z)
+            return true;
     return false;
 }
 

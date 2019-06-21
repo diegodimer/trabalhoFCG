@@ -40,7 +40,7 @@ void main()
     // Coordenadas de textura obtidas do arquivo OBJ (se existirem!)
     texcoords = texture_coefficients;
     float U,V;
-    if (object_id == 6)
+    if (object_id == 6) // 6 é o light switch
     {
 
         vec3 lightfontColor = vec3(1.0f, 1.0f, 1.0f);

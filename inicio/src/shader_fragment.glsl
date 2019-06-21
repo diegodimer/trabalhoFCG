@@ -34,6 +34,7 @@ uniform float timeCounter;
 #define CAIXA3 14
 #define CAIXA4 15
 #define CAIXA5 16
+#define FOLHA  17
 
 uniform int object_id;
 
@@ -56,7 +57,7 @@ uniform sampler2D Caixa2Tex;
 uniform sampler2D Caixa3Tex;
 uniform sampler2D Caixa4Tex;
 uniform sampler2D Caixa5Tex;
-
+uniform sampler2D FolhaTex;
 // Constantes
 #define M_PI   3.14159265358979323846
 #define M_PI_2 1.57079632679489661923
@@ -69,7 +70,7 @@ out vec3 color;
 
 void main()
 {
-
+    color = vec3(0,0,0);
     vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
     vec4 camera_position = inverse(view) * origin;
 
@@ -261,6 +262,15 @@ void main()
         Ks = vec3(0,0,0);
         Ka = Kd;
         q = 0.0f;
+    } else if(object_id == FOLHA){
+        U = texcoords.x;
+        V = texcoords.y;
+        // a refletancia difusa é da imagem agora, com as coordenadas de textura
+        Kd = (texture(FolhaTex, vec2(U,V)).rgb);
+        // Equação de Iluminação
+        Ks = vec3(0,0,0);
+        Ka = Kd;
+        q = 0.0f;
     }
     else // Objeto desconhecido = preto
     {
@@ -281,8 +291,8 @@ void main()
     vec3 ambient_term;
     vec3 phong_specular_term;
     vec3 blinn_phong_specular_term;
-    vec3 contribuicaoLanterna;
-    vec3 contribuicaoInterruptor;
+    vec3 contribuicaoLanterna = vec3(0,0,0);
+    vec3 contribuicaoInterruptor= vec3(0,0,0);
 
     if(lightsOn == 0 && interruptor == 0) // lanterna ligada (luzes desligadas)
     {
@@ -356,6 +366,7 @@ void main()
             contribuicaoInterruptor = cor_v*0.001;
         else
             contribuicaoInterruptor= cor_v;
+        contribuicaoLanterna = vec3(0,0,0);
     }
     color = contribuicaoInterruptor + contribuicaoLanterna;
     // Cor final com correção gamma, considerando monitor sRGB.
