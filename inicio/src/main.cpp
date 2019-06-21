@@ -151,6 +151,7 @@ void testaCubo(float, float, float);
 void testaCaixas(float, float, float);
 void testa_ordem();
 bool collisionCheckPointBox(glm::vec4, glm::vec4, glm::vec4);
+bool collisionCheckBoxBox(glm::vec4, glm::vec4, glm::vec4, glm::vec4);
 
 
 // Número de texturas carregadas pela função LoadTextureImage()
@@ -254,6 +255,7 @@ int moveCaixa2 =0;
 int moveCaixa3 =0;
 int moveCaixa4 =0;
 int moveZumbi=0;
+int colisaoCaixa=0;
 bool isMoving=false;
 
 float rotacaoCaixa2=0;
@@ -556,8 +558,30 @@ int main(int argc, char* argv[])
                 if(dotproduct(position_vector, normal)<=0){ // se o sinal do produto vetorial entre a posição e a normal é <0 significa que ele está a mais de 90º entao nao pode ir
                     canMove=false;
                 }
-
             }
+                if (sceneVector[i].nameId==ZOMBIE)
+                {
+                    glm::vec4 bbox_max_aux = sceneVector[11].model * glm::vec4(g_VirtualScene[sceneVector[11].name].bbox_max.x, g_VirtualScene[sceneVector[11].name].bbox_max.y,
+                                           g_VirtualScene[sceneVector[11].name].bbox_max.z, 1.0f);
+                    glm::vec4 bbox_min_aux = sceneVector[11].model * glm::vec4(g_VirtualScene[sceneVector[11].name].bbox_min.x, g_VirtualScene[sceneVector[11].name].bbox_min.y,
+                                           g_VirtualScene[sceneVector[11].name].bbox_min.z, 1.0f) ;
+                    glm::vec4 fixedBBoxMaxAux = bbox_max_aux;
+                    glm::vec4 fixedBBoxMinAux = bbox_min_aux;
+
+                    bbox_min_aux.x = std::min(fixedBBoxMinAux.x, fixedBBoxMaxAux.x);
+                    bbox_min_aux.y = std::min(fixedBBoxMinAux.y, fixedBBoxMaxAux.y);
+                    bbox_min_aux.z = std::min(fixedBBoxMinAux.z, fixedBBoxMaxAux.z);
+                    bbox_max_aux.x = std::max(fixedBBoxMinAux.x, fixedBBoxMaxAux.x);
+                    bbox_max_aux.y = std::max(fixedBBoxMinAux.y, fixedBBoxMaxAux.y);
+                    bbox_max_aux.z = std::max(fixedBBoxMinAux.z, fixedBBoxMaxAux.z);
+
+                    if (collisionCheckBoxBox(bbox_min_aux, bbox_max_aux, bbox_min, bbox_max))
+                    {
+                        colisaoCaixa=1;
+                        if(flagBezier!=2)
+                            flagBezier=0;
+                    }
+                }
 
         }
         /// FIM TESTE DE COLISAO
@@ -2150,7 +2174,7 @@ void buildFirstScene()
     }
 
      //caixa 4
-    if(moveCaixa4==1)
+    if(moveCaixa4==1 && colisaoCaixa==0)
     {
         if (flagBezier==0)
         {
@@ -2190,6 +2214,51 @@ void buildFirstScene()
             flagBezier=0;
             isMoving=false;
         }
+    }
+    else if (moveCaixa4==1 && colisaoCaixa==1)
+    {
+        if (flagBezier==0)
+        {
+            posVetor--;
+            PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\collision.wav", NULL, SND_FILENAME | SND_ASYNC);
+            auxBezier=glfwGetTime();
+            flagBezier=2;
+        }
+        t = (glfwGetTime() - auxBezier)/2;
+        t = sin(t);
+
+        glm::vec4 p1  = glm::vec4(-6.478505f,       -0.959197f,         -16.429457f,    1.0f);
+        glm::vec4 p2  = glm::vec4(-7.0f,            -0.98f,             -17.0f,         1.0f);
+        glm::vec4 p3  = glm::vec4(-7.0f,            -1.0f,              -19.0f,         1.0f);
+        glm::vec4 p4  = glm::vec4(p_inicial_caixa4.x,  p_inicial_caixa4.y,    p_inicial_caixa4.z, 1.0f);
+
+        // polinomio de bernstein (achei mais facil escrever por extenso que usar a série)
+        float b03 = pow( (1-t), 3);
+        float b13 = 3*t * pow( (1-t),2);
+        float b23 = 3*t*t * (1-t);
+        float b33 = pow(t,3);
+        glm::vec4 centro_caixa4  = b03*p1 + b13*p2 + b23*p3 + b33*p4;
+
+        if (rotacaoCaixa4<0.272f)
+            rotacaoCaixa4+=0.020f;
+
+        Objeto.model = Matrix_Translate(centro_caixa4.x, centro_caixa4.y, centro_caixa4.z) * Matrix_Rotate_Y(3.1415f -0.272f + rotacaoCaixa4);
+        strcpy(Objeto.name,"caixa");
+        Objeto.nameId = CAIXA4;
+        sceneVector.push_back(Objeto);
+        if (centro_caixa4.z <=-19.4999f)
+        {
+            moveCaixa4=0;
+            p_inicial_caixa4.x = -7.5f;
+            p_inicial_caixa4.y = -1.0f;
+            p_inicial_caixa4.z = -19.5f;
+            rotacaoCaixa4=0;
+            auxBezier=0;
+            flagBezier=0;
+            colisaoCaixa=0;
+            isMoving=false;
+        }
+
     }
     else if(moveCaixa4==2)
     {
@@ -2630,11 +2699,13 @@ void testaCaixas(float x, float y, float z)
             {
                 moveZumbi=1;
                 isMoving=true;
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\zombie.wav", NULL, SND_FILENAME | SND_ASYNC);
             }
             else if (moveZumbi ==-1 && intersection_distance<=5.0f && isMoving==false)
             {
                 moveZumbi=2;
                 isMoving=true;
+                PlaySoundA((LPCSTR) "..\\..\\data\\sounds\\zombie.wav", NULL, SND_FILENAME | SND_ASYNC);
             }
         }
 
@@ -2813,6 +2884,14 @@ bool collisionCheckPointBox(glm::vec4 point, glm::vec4 bboxMin, glm::vec4 bboxMa
     if (point.x >= bboxMin.x && point.x <= bboxMax.x)
             if(point.z >= bboxMin.z && point.z <= bboxMax.z)
                 return true;
+    return false;
+}
+
+bool collisionCheckBoxBox(glm::vec4 bbox1_Min, glm::vec4 bbox1_Max, glm::vec4 bbox2_Min, glm::vec4 bbox2_Max)
+{
+    if (bbox1_Min.x <= bbox2_Max.x && bbox1_Max.x >= bbox2_Min.x)
+        if (bbox1_Min.z <= bbox2_Max.z && bbox1_Max.z >= bbox2_Min.z)
+            return true;
     return false;
 }
 
